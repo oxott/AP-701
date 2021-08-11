@@ -89,9 +89,9 @@ def geometry(airplane):
     # Unpack dictionary
     S_w = airplane['S_w']
     AR_w = airplane['AR_w']
-    taper_w = airplane['taper_w']
-    sweep_w = airplane['sweep_w']
-    dihedral_w = airplane['dihedral_w']
+    taper_w = airplane['taper_w']                                       #? lambda_w
+    sweep_w = airplane['sweep_w']                                       #? LAMBDA_w
+    dihedral_w = airplane['dihedral_w']                                 #? delta_w
     xr_w = airplane['xr_w']
     zr_w = airplane['zr_w']
     Cht = airplane['Cht']
@@ -99,7 +99,7 @@ def geometry(airplane):
     taper_h = airplane['taper_h']
     sweep_h = airplane['sweep_h']
     dihedral_h = airplane['dihedral_h']
-    Lc_h = airplane['Lc_h']
+    Lc_h = airplane['Lc_h']                                             #? Lever Arm 
     zr_h = airplane['zr_h']
     Cvt = airplane['Cvt']
     AR_v = airplane['AR_v']
@@ -108,9 +108,47 @@ def geometry(airplane):
     Lb_v = airplane['Lb_v']
     zr_v = airplane['zr_v']
 
-    ### ADD CODE FROM SECTION 3.1 HERE ###
-
-
+    #* Sizing of the wing
+    b_w = np.sqrt(AR_w * S_w)                                           #? span
+    cr_w = 2*S_w / (b_w * (1 + taper_w))                                #? root cord
+    ct_w = taper_w * cr_w                                               #? tip cord
+    yt_w = b_w/2                                                        #? wing tip lateral position
+    xt_w = xr_w + yt_w*np.tan(sweep_w) + (cr_w - ct_w)/4                #? wing tip longitudinal position
+    zt_w = zr_w + yt_w*np.tan(dihedral_w)                               #? wing tip vertical position
+    cm_w = (2*cr_w/3) * ((1 + taper_w + taper_w**2) / (1 + taper_w))    #? mean aerodynamic chord of the wing
+    ym_w = (b_w/6) * (1+2*taper_w)/(1 + taper_w)                        #? lateral position of the mean aerodynamic chord
+    xm_w = xr_w + ym_w*np.tan(sweep_w) + (cr_w - cm_w)/4                #? Longitudinal position 
+    zm_w = zr_w + ym_w*np.tan(dihedral_w)                               #? Vertical position
+    
+    #* Sizing of the horizontal Tail
+    L_h = Lc_h * cm_w
+    S_h = S_w*cm_w*Cht/L_h                                             #? Horizontal Tail Area
+    b_h = np.sqrt(AR_h * S_h)                                           #? span
+    cr_h = 2*S_h / (b_h * (1 + taper_h))                                #? root cord
+    ct_h = taper_h * cr_h                                               #? tip cord
+    cm_h = (2*cr_h/3) * ((1 + taper_h + taper_h**2) / (1 + taper_h))    #? mean aerodynamic chord of the horizontal tail
+    xm_h = xm_w + L_h + (cm_w - cm_h)/4                                 #? Longitudinal position 
+    ym_h = (b_h/6) * (1 + 2*taper_h)/(1 + taper_h)                      #? Lateral position
+    zm_h = zr_h + ym_h*np.tan(dihedral_h)                               #? Vertical position
+    xr_h = xm_h - ym_h*np.tan(sweep_h) + (cm_h - cr_h)/4                #? root leading edge position
+    yt_h = b_h/2                                                        #? Horizontal Tail tip Y
+    xt_h = xr_h + yt_h*np.tan(sweep_h) + (cr_h - ct_h)/4                #? Horizontal Tail tip X
+    zt_h = zr_h + yt_h*np.tan(dihedral_h)                               #? Horizontal Tail tip Z
+    
+    #* Sizing of the Vertical Tail
+    L_v = Lb_v * cm_w
+    S_v = S_w * b_w * Cvt/L_v                                           #? chord
+    b_v = np.sqrt(AR_v * S_v)                                           #? span
+    cr_v = 2*S_v/(b_v*(1 + taper_h))                                    #? root cord
+    ct_v = taper_h * cr_v                                               #? tip cord
+    cm_v = (2*cr_v/3) * ((1 + taper_v + taper_v**2) / (1 + taper_v))    #? mean aerodynamic chord of the vertical tail
+    xm_v = xm_w + L_v + (cm_w - cm_v)/4                                #? Longitudinal position chord
+    zm_v = zr_v + (b_v/3) * (1 + 2*taper_v)/(1 + taper_v)               #? Vertical Position chord
+    xr_v = xm_v - (zm_v - zr_v)*np.tan(sweep_v) + (cm_v - cr_v)/4       #? root leading edge position
+    zt_v = zr_v + b_v                                                   #? Vertical Tail Tip Z
+    xt_v = xr_v + (zt_v - zr_v)*np.tan(sweep_v) + (cr_v - ct_v)/4       #? Vertical tail tip X
+    
+    
     # Update dictionary with new results
     airplane['b_w'] = b_w
     airplane['cr_w'] = cr_w
@@ -552,10 +590,8 @@ def weight(W0_guess, T0_guess, airplane):
     delta = 1000
 
     while abs(delta) > 10:
-
+        pass
         ### ADD CODE FROM SECTION 3.6.4 HERE ###
-
-
     return W0, We, Wf, Mf_cruise, xcg_e
 
 #----------------------------------------

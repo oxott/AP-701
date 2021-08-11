@@ -136,11 +136,11 @@ def geometry(airplane):
     zt_h = zr_h + yt_h*np.tan(dihedral_h)                               #? Horizontal Tail tip Z
     
     #* Sizing of the Vertical Tail
-    L_v = Lb_v * cm_w
+    L_v = Lb_v * b_w
     S_v = S_w * b_w * Cvt/L_v                                           #? chord
     b_v = np.sqrt(AR_v * S_v)                                           #? span
-    cr_v = 2*S_v/(b_v*(1 + taper_h))                                    #? root cord
-    ct_v = taper_h * cr_v                                               #? tip cord
+    cr_v = 2*S_v/(b_v*(1 + taper_v))                                    #? root cord
+    ct_v = taper_v * cr_v                                               #? tip cord
     cm_v = (2*cr_v/3) * ((1 + taper_v + taper_v**2) / (1 + taper_v))    #? mean aerodynamic chord of the vertical tail
     xm_v = xm_w + L_v + (cm_w - cm_v)/4                                #? Longitudinal position chord
     zm_v = zr_v + (b_v/3) * (1 + 2*taper_v)/(1 + taper_v)               #? Vertical Position chord

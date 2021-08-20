@@ -3,8 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pprint
 
+#Tamanho da fonte para os plots abaixo
 plt.rcParams['font.size'] = '16'
 
+#Parâmetros do Fokker 100
 airplane = {'AR_h': 4.64 ,
 'AR_v': 1.27 ,
 'AR_w': 8.43 ,
@@ -124,10 +126,11 @@ slat_def = 0.0
 lg_down = 1
 h_ground = 10.668
 W0_guess = 467500.0
+#? Verificação do código
 CD0, K, CLmax = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
                     lg_down, h_ground, W0_guess, airplane, method=2)
-#! AVIÃO TOP
 
+#? Homework 3.2.11
 altitude = 11000
 n_engines_failed = 0
 flap_def = 0.0
@@ -135,16 +138,16 @@ slat_def = 0.0
 lg_down = 0
 h_ground = 0.0
 W0_guess = 41500*9.81
-
 airplane['sweep_w'] = np.deg2rad(10)
 
+#? Inicialização dos vetores
 Machs  = np.arange(0.6, 0.801, 0.001)
 Wing_Sweep = np.arange(10, 45, 5)
 CD0    = np.zeros((len(Wing_Sweep), len(Machs)))
 K      = np.zeros((len(Wing_Sweep), len(Machs)))
 CLmax  = np.zeros((len(Wing_Sweep), len(Machs)))
 
-
+#? Iteração entre os valores
 for i, sweep in enumerate(Wing_Sweep):
     airplane['sweep_w'] = np.deg2rad(sweep)
     dt.geometry(airplane)

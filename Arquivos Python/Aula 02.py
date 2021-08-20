@@ -139,7 +139,7 @@ for i, sweep in enumerate(Wing_Sweep):
         CD0[i,j], K[i, j], CLmax[i, j] = dt.aerodynamics(mach, altitude, n_engines_failed, flap_def, slat_def,
                     lg_down, h_ground, W0_guess, airplane, method=2)
 
-
+#! Questão 1
 fig = plt.figure()
 ax = fig.gca()
 for i, sweep in enumerate(Wing_Sweep):
@@ -148,12 +148,129 @@ ax.legend()
 ax.set_xlabel('Mach')
 ax.set_ylabel('CD0')
 
-
+#! Questão 2
 fig2 = plt.figure()
 ax2 = fig2.gca()
-for i, sweep in enumerate(Wing_Sweep):
-    ax2.plot(Machs, CLmax[i,:], label=f'{sweep}°')
-ax2.legend()
-ax2.set_xlabel('Mach')
+ax2.plot(Wing_Sweep, CLmax[:,1])
+ax2.set_xlabel('Wing Sweep [°]')
 ax2.set_ylabel('CLmax')
 plt.show()
+
+#! Questão 4
+airplane['sweep_w'] = np.deg2rad(10)
+dt.geometry(airplane)
+
+#? Cruise
+Mach = 0.75
+altitude = 11000
+n_engines_failed = 0
+flap_def = 0.0
+slat_def = 0.0
+lg_down = 0
+h_ground = 0
+W0_guess = 41500*9.81
+
+CD0_Cruise, K_Cruise, CLmax_Cruise = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+#? Takeoff
+Mach = 0.2
+altitude = 0
+n_engines_failed = 0
+flap_def = 20*np.pi/180
+slat_def = 0.0
+lg_down = 1
+h_ground = 10.67
+W0_guess = 41500*9.81
+
+CD0_TO, K_TO, CLmax_TO = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+#? Landing
+Mach = 0.2
+altitude = 0
+n_engines_failed = 0
+flap_def = 40*np.pi/180
+slat_def = 0.0
+lg_down = 1
+h_ground = 10.67
+W0_guess = 38300*9.81
+
+CD0_landing, K_landing, CLmax_landing = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+fig3 = plt.figure()
+ax3 = fig3.gca()
+ax3.plot([CD0_Cruise, CD0_TO, CD0_landing], [CLmax_Cruise, CLmax_TO, CLmax_landing])
+ax3.set_xlabel('CD')
+ax3.set_ylabel('CL')
+plt.show()
+
+#! TA MTO ESTRANHO ISSO
+
+#! Questão 5
+
+#? Takeoff
+Mach = 0.2
+altitude = 0
+n_engines_failed = 0
+flap_def = 20*np.pi/180
+slat_def = 0.0
+lg_down = 1
+h_ground = 10.67
+W0_guess = 41500*9.81
+CD0_5 = np.zeros(5)
+K_5 = np.zeros(5)
+CLmax_5 = np.zeros(5)
+
+#? Plain Flap
+flap_type = 'plain'
+flap_def = 20*np.pi/180
+max_flap_def = 60*np.pi/180
+CD0_5[0], K_5[0], CLmax_5[0] = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+#? Single slotted flap:
+flap_type = 'slotted'
+flap_def = 20*np.pi/180
+max_flap_def = 40*np.pi/180
+CD0_5[1], K_5[1], CLmax_5[1] = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+#? Fowler flap:
+flap_type = 'fowler'
+flap_def = 15*np.pi/180
+max_flap_def = 40*np.pi/180
+CD0_5[2], K_5[2], CLmax_5[2] = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+#? Double slotted flap:
+flap_type = 'double slotted'
+flap_def = 20*np.pi/180
+max_flap_def = 50*np.pi/180
+CD0_5[3], K_5[3], CLmax_5[3] = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+#? Triple slotted flap:
+flap_type = 'triple slotted'
+flap_def = 20*np.pi/180
+max_flap_def = 40*np.pi/180
+CD0_5[4], K_5[4], CLmax_5[4] = dt.aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+flaps = ['Plain', 'Single Slotted', 'Fowler', 'Double Slotted','Triple Slotted']
+
+threshold = 2.1
+above_threshold = np.maximum(CLmax_5 - threshold, 0)
+below_threshold = np.minimum(CLmax_5, threshold)
+
+# and plot it
+fig, ax = plt.subplots()
+ax.bar(flaps, below_threshold, 0.35, color="r")
+ax.bar(flaps, above_threshold, 0.35, color="g",
+        bottom=below_threshold)
+
+# horizontal line indicating the threshold
+ax.axhline(y=threshold,linewidth=1, color='k')
+plt.show()
+

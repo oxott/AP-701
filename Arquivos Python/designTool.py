@@ -122,7 +122,7 @@ def geometry(airplane):
     
     #* Sizing of the horizontal Tail
     L_h = Lc_h * cm_w
-    S_h = S_w*cm_w*Cht/L_h                                             #? Horizontal Tail Area
+    S_h = S_w*cm_w*Cht/L_h                                              #? Horizontal Tail Area
     b_h = np.sqrt(AR_h * S_h)                                           #? span
     cr_h = 2*S_h / (b_h * (1 + taper_h))                                #? root cord
     ct_h = taper_h * cr_h                                               #? tip cord
@@ -142,7 +142,7 @@ def geometry(airplane):
     cr_v = 2*S_v/(b_v*(1 + taper_v))                                    #? root cord
     ct_v = taper_v * cr_v                                               #? tip cord
     cm_v = (2*cr_v/3) * ((1 + taper_v + taper_v**2) / (1 + taper_v))    #? mean aerodynamic chord of the vertical tail
-    xm_v = xm_w + L_v + (cm_w - cm_v)/4                                #? Longitudinal position chord
+    xm_v = xm_w + L_v + (cm_w - cm_v)/4                                 #? Longitudinal position chord
     zm_v = zr_v + (b_v/3) * (1 + 2*taper_v)/(1 + taper_v)               #? Vertical Position chord
     xr_v = xm_v - (zm_v - zr_v)*np.tan(sweep_v) + (cm_v - cr_v)/4       #? root leading edge position
     zt_v = zr_v + b_v                                                   #? Vertical Tail Tip Z

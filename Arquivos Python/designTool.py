@@ -23,10 +23,15 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # CONSTANTS
 ft2m = 0.3048
+m2ft = (1/ft2m)
+kg2lbs = 2.20462
 kt2ms = 0.514444
 lb2N = 4.44822
 nm2m = 1852.0
 gravity = 9.81
+gamma = 1.4
+R = 287 #J/kg/K
+
 
 #========================================
 # MAIN FUNCTION
@@ -514,7 +519,14 @@ def engineTSFC(Mach, altitude, airplane):
 
     ### ADD CODE FROM SECTION 3.3 HERE ###
 
-
+    T, p, rho, mi = atmosphere(altitude, 288.15)
+    sigma = rho/1.225
+    if BPR < 4.0:
+        C_base = 0.85/3600
+    else:
+        C_base = 0.7/3600
+    
+    C = C_base*(1 - 0.15*BPR**0.65)*(1 + 0.28*(1 + 0.063*BPR**2)*Mach)*sigma**0.08
     return C
 
 #----------------------------------------
@@ -545,7 +557,49 @@ def empty_weight(W0_guess, T0_guess, airplane):
     x_mlg = airplane['x_mlg']
 
     ### ADD CODE FROM SECTION 3.4 HERE ###
-
+    #? Wing Weight
+    Nz = 1.5*2.58                                                   #? Load Factor
+    S_csw = 0.15*S_w*(m2ft**2)                                      #? Control surface area
+    #! This equation uses British units! All areas are in ft2 and all weights are in lbs. Remember to make
+    #! conversions before and after using this equation.
+    #TODO ESSE WING WEIGHT TA ERRADO, NÂO SEI PQ
+    W_w = 0.0051*(W0_guess*kg2lbs*Nz)**0.557 *(S_w*m2ft**2)**0.649 *AR_w**0.55 *tcr_w**(-0.4) *(1+taper_w)**0.1 *(np.cos(sweep_w))**(-1.0) *S_csw**0.1
+    xCG_w = xm_w + 0.4*cm_w
+    
+    #? Horizontal Tail Weight
+    W_h = 27*gravity*S_h
+    xCG_h = xm_h + 0.4*cm_h
+    
+    #? Vertical Tail Height
+    W_v = 27*gravity*S_v
+    xCG_v = xm_v + 0.4*cm_v
+    
+    #? Fuselage Weight
+    W_f = 24*gravity*Swet_f
+    xCG_f = 0.45*L_f
+    
+    #? Nose Landing Gear Weight
+    W_nlg = 0.15*0.043*W0_guess
+    xCG_nlg = x_nlg
+    
+    #? Main Landing Gear Weight
+    W_mlg = 0.85*0.043*W0_guess
+    xCG_mlg = x_mlg
+    
+    #? Installed Engine Weight
+    T_eng = T0_guess/n_engines
+    W_eng = 14.7*gravity*pow(T_eng/1000, 1.1)*np.exp(-0.045*BPR)
+    W_eng_installed = 1.3*n_engines*W_eng
+    xCG_eng = x_n + 0.5*L_n 
+    
+    #? All-else Weight
+    W_allelse = 0.17*W0_guess
+    xCG_allelse = 0.45*L_f
+    
+    #? Empty Weight
+    We = W_w + W_h + W_v + W_f + W_nlg + W_mlg + W_eng + W_allelse
+    xcg_e = (W_w*xCG_w + W_h*xCG_h + W_v*xCG_v + W_f*xCG_f + W_nlg*xCG_nlg +\
+        W_mlg*xCG_mlg + W_eng_installed*xCG_eng + W_allelse*xCG_allelse)/We
 
     # Update dictionary
     airplane['W_w'] = W_w
@@ -574,7 +628,73 @@ def fuel_weight(W0_guess, airplane):
     range_altcruise = airplane['range_altcruise']
 
     ### ADD CODE FROM SECTION 3.5 HERE ###
-
+    Mach = Mach_cruise
+    altitude = altitude_cruise
+    n_engines_failed = 0
+    flap_def = 0.0
+    slat_def = 0.0
+    lg_down = 0
+    h_ground = 0
+    CD0_cruise, K_cruise,_ = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                    lg_down, h_ground, W0_guess, airplane, method=2)
+    C_cruise = engineTSFC(Mach_cruise, altitude_cruise, airplane)
+    
+    Mach = Mach_altcruise
+    altitude = altitude_altcruise
+    n_engines_failed = 0
+    flap_def = 0.0
+    slat_def = 0.0
+    lg_down = 0
+    h_ground = 0
+    CD0_altcruise, K_altcruise,_ = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                    lg_down, h_ground, W0_guess, airplane, method=2)
+    C_altcruise = engineTSFC(Mach_altcruise, altitude_altcruise, airplane)
+    Mf = 1.0
+    
+    #? Engine Start and warp-up
+    Mf = Mf*0.99
+    #? Taxi
+    Mf = Mf*0.99
+    #? Take-off
+    Mf = Mf*0.995
+    #? Climb
+    Mf = Mf*0.98
+    #? Cruise
+    Mf_cruise = Mf
+    
+    T,p,rho,mi = atmosphere(altitude_cruise, 288.15)
+    a_cruise = np.sqrt(gamma*R*T)
+    V_cruise = Mach_cruise*a_cruise
+    W_cruise = Mf*W0_guess
+    CL_cruise = 2*W_cruise/(rho*S_w*V_cruise**2)
+    CD_cruise = CD0_cruise + K_cruise*CL_cruise**2
+    FF_cruise = np.exp(-range_cruise*C_cruise*CD_cruise/(V_cruise*CL_cruise))
+    Mf = Mf*FF_cruise
+    
+    #? Loitter
+    LD_max = 1/(2*np.sqrt(CD0_cruise*K_cruise))
+    C_loiter = 0.8*C_cruise
+    FF_loiter = np.exp(-loiter_time*C_loiter/LD_max)
+    Mf = Mf*FF_loiter
+    
+    #? Descent
+    Mf = Mf*0.99
+    
+    #? Alternate Cruise
+    T,p,rho,mi = atmosphere(altitude_altcruise, 288.15)
+    a_altcruise = np.sqrt(gamma*R*T)
+    V_altcruise = Mach_altcruise*a_altcruise
+    W_altcruise = Mf*W0_guess
+    CL_altcruise = 2*W_altcruise/(rho*S_w*V_altcruise**2)
+    CD_altcruise = CD0_altcruise + K_altcruise*CL_altcruise**2
+    FF_altcruise = np.exp(-range_altcruise*C_altcruise*CD_altcruise/(V_altcruise*CL_altcruise))
+    Mf = Mf*FF_altcruise
+    
+    #? Landing Taxi and Shutdown
+    Mf = Mf*0.992
+    
+    #? Fuel Weight
+    Wf = 1.06*(1 - Mf)*W0_guess    
 
     return Wf, Mf_cruise
 
@@ -590,8 +710,11 @@ def weight(W0_guess, T0_guess, airplane):
     delta = 1000
 
     while abs(delta) > 10:
-        pass
-        ### ADD CODE FROM SECTION 3.6.4 HERE ###
+        Wf, Mf_cruise = fuel_weight(W0_guess, airplane)
+        We, xcg_e = empty_weight(W0_guess, T0_guess, airplane)
+        W0 = W_payload + W_crew + Wf + We
+        delta = W0 - W0_guess
+        W0_guess = W0
     return W0, We, Wf, Mf_cruise, xcg_e
 
 #----------------------------------------

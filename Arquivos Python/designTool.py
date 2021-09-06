@@ -23,24 +23,22 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # CONSTANTS
 ft2m = 0.3048
-m2ft = (1/ft2m)
-kg2lbs = 2.20462
 kt2ms = 0.514444
 lb2N = 4.44822
 nm2m = 1852.0
 gravity = 9.81
-gamma = 1.4
-R = 287 #J/kg/K
+gamma_ar = 1.4
+R_ar = 287
 
-
-#========================================
+# ========================================
 # MAIN FUNCTION
 
-def analyze(airplane = None,
-            print_log = False, # Plot results on the terminal screen
-            plot = False, # Generate 3D plot of the aircraft
-            W0_guess = None, # Guess for MTOW [N]
-            T0_guess = None, # Guess for Takeoff total thrust [N]
+
+def analyze(airplane=None,
+            print_log=False,  # Plot results on the terminal screen
+            plot=False,  # Generate 3D plot of the aircraft
+            W0_guess=None,  # Guess for MTOW [N]
+            T0_guess=None,  # Guess for Takeoff total thrust [N]
             ):
     '''
     This is the main function that should be used for aircraft analysis.
@@ -57,8 +55,7 @@ def analyze(airplane = None,
     if T0_guess is None:
         T0_guess = 0.3*W0_guess
 
-    ### ADD CODE FROM SECTION 4.3 HERE ###
-
+    # ADD CODE FROM SECTION 4.3 HERE ###
 
     if print_log:
         print('We', airplane['We']/gravity)
@@ -78,7 +75,8 @@ def analyze(airplane = None,
         print('frac_nlg_fwd', airplane['frac_nlg_fwd'])
         print('frac_nlg_aft', airplane['frac_nlg_aft'])
         print('alpha_tipback [deg]', airplane['alpha_tipback']*180.0/np.pi)
-        print('alpha_tailstrike [deg]', airplane['alpha_tailstrike']*180.0/np.pi)
+        print('alpha_tailstrike [deg]',
+              airplane['alpha_tailstrike']*180.0/np.pi)
         print('phi_overturn [deg]', airplane['phi_overturn']*180.0/np.pi)
 
     if plot:
@@ -86,17 +84,18 @@ def analyze(airplane = None,
 
     return airplane
 
-#========================================
+# ========================================
 # DISCIPLINE MODULES
+
 
 def geometry(airplane):
 
     # Unpack dictionary
     S_w = airplane['S_w']
     AR_w = airplane['AR_w']
-    taper_w = airplane['taper_w']                                       #? lambda_w
-    sweep_w = airplane['sweep_w']                                       #? LAMBDA_w
-    dihedral_w = airplane['dihedral_w']                                 #? delta_w
+    taper_w = airplane['taper_w']
+    sweep_w = airplane['sweep_w']
+    dihedral_w = airplane['dihedral_w']
     xr_w = airplane['xr_w']
     zr_w = airplane['zr_w']
     Cht = airplane['Cht']
@@ -104,7 +103,7 @@ def geometry(airplane):
     taper_h = airplane['taper_h']
     sweep_h = airplane['sweep_h']
     dihedral_h = airplane['dihedral_h']
-    Lc_h = airplane['Lc_h']                                             #? Lever Arm 
+    Lc_h = airplane['Lc_h']
     zr_h = airplane['zr_h']
     Cvt = airplane['Cvt']
     AR_v = airplane['AR_v']
@@ -113,47 +112,56 @@ def geometry(airplane):
     Lb_v = airplane['Lb_v']
     zr_v = airplane['zr_v']
 
-    #* Sizing of the wing
-    b_w = np.sqrt(AR_w * S_w)                                           #? span
-    cr_w = 2*S_w / (b_w * (1 + taper_w))                                #? root cord
-    ct_w = taper_w * cr_w                                               #? tip cord
-    yt_w = b_w/2                                                        #? wing tip lateral position
-    xt_w = xr_w + yt_w*np.tan(sweep_w) + (cr_w - ct_w)/4                #? wing tip longitudinal position
-    zt_w = zr_w + yt_w*np.tan(dihedral_w)                               #? wing tip vertical position
-    cm_w = (2*cr_w/3) * ((1 + taper_w + taper_w**2) / (1 + taper_w))    #? mean aerodynamic chord of the wing
-    ym_w = (b_w/6) * (1+2*taper_w)/(1 + taper_w)                        #? lateral position of the mean aerodynamic chord
-    xm_w = xr_w + ym_w*np.tan(sweep_w) + (cr_w - cm_w)/4                #? Longitudinal position 
-    zm_w = zr_w + ym_w*np.tan(dihedral_w)                               #? Vertical position
-    
-    #* Sizing of the horizontal Tail
+    # Wing Sizing
+    b_w = np.sqrt(AR_w * S_w)
+    cr_w = (2 * S_w)/(b_w * (1 + taper_w))
+    ct_w = taper_w * cr_w
+
+    yt_w = b_w / 2
+    xt_w = xr_w + yt_w * np.tan(sweep_w) + (cr_w - ct_w) / 4
+    zt_w = zr_w + yt_w * np.tan(dihedral_w)
+
+    cm_w = (2 * cr_w / 3) * ((1 + taper_w + (taper_w ** 2)) / (1 + taper_w))
+    ym_w = (b_w / 6) * ((1 + 2 * taper_w) / (1 + taper_w))
+    xm_w = xr_w + ym_w * np.tan(sweep_w) + (cr_w - cm_w) / 4
+    zm_w = zr_w + ym_w * np.tan(dihedral_w)
+
+    # Horizontal Tail Sizing
     L_h = Lc_h * cm_w
-    S_h = S_w*cm_w*Cht/L_h                                              #? Horizontal Tail Area
-    b_h = np.sqrt(AR_h * S_h)                                           #? span
-    cr_h = 2*S_h / (b_h * (1 + taper_h))                                #? root cord
-    ct_h = taper_h * cr_h                                               #? tip cord
-    cm_h = (2*cr_h/3) * ((1 + taper_h + taper_h**2) / (1 + taper_h))    #? mean aerodynamic chord of the horizontal tail
-    xm_h = xm_w + L_h + (cm_w - cm_h)/4                                 #? Longitudinal position 
-    ym_h = (b_h/6) * (1 + 2*taper_h)/(1 + taper_h)                      #? Lateral position
-    zm_h = zr_h + ym_h*np.tan(dihedral_h)                               #? Vertical position
-    xr_h = xm_h - ym_h*np.tan(sweep_h) + (cm_h - cr_h)/4                #? root leading edge position
-    yt_h = b_h/2                                                        #? Horizontal Tail tip Y
-    xt_h = xr_h + yt_h*np.tan(sweep_h) + (cr_h - ct_h)/4                #? Horizontal Tail tip X
-    zt_h = zr_h + yt_h*np.tan(dihedral_h)                               #? Horizontal Tail tip Z
-    
-    #* Sizing of the Vertical Tail
+    S_h = (S_w * cm_w / L_h) * Cht
+
+    b_h = np.sqrt(AR_h * S_h)
+    cr_h = (2 * S_h)/(b_h * (1 + taper_h))
+    ct_h = taper_h * cr_h
+
+    cm_h = (2 * cr_h / 3) * ((1 + taper_h + (taper_h ** 2)) / (1 + taper_h))
+    xm_h = xm_w + L_h + (cm_w - cm_h) / 4
+    ym_h = (b_h / 6) * ((1 + 2 * taper_h) / (1 + taper_h))
+    zm_h = zr_h + ym_h * np.tan(dihedral_h)
+
+    xr_h = xm_h - ym_h * np.tan(sweep_h) + (cm_h - cr_h) / 4
+
+    yt_h = b_h / 2
+    xt_h = xr_h + yt_h * np.tan(sweep_h) + (cr_h - ct_h) / 4
+    zt_h = zr_h + yt_h * np.tan(dihedral_h)
+
+    # Vertical Tail Sizing
     L_v = Lb_v * b_w
-    S_v = S_w * b_w * Cvt/L_v                                           #? chord
-    b_v = np.sqrt(AR_v * S_v)                                           #? span
-    cr_v = 2*S_v/(b_v*(1 + taper_v))                                    #? root cord
-    ct_v = taper_v * cr_v                                               #? tip cord
-    cm_v = (2*cr_v/3) * ((1 + taper_v + taper_v**2) / (1 + taper_v))    #? mean aerodynamic chord of the vertical tail
-    xm_v = xm_w + L_v + (cm_w - cm_v)/4                                 #? Longitudinal position chord
-    zm_v = zr_v + (b_v/3) * (1 + 2*taper_v)/(1 + taper_v)               #? Vertical Position chord
-    xr_v = xm_v - (zm_v - zr_v)*np.tan(sweep_v) + (cm_v - cr_v)/4       #? root leading edge position
-    zt_v = zr_v + b_v                                                   #? Vertical Tail Tip Z
-    xt_v = xr_v + (zt_v - zr_v)*np.tan(sweep_v) + (cr_v - ct_v)/4       #? Vertical tail tip X
-    
-    
+    S_v = (S_w * b_w / L_v) * Cvt
+
+    b_v = np.sqrt(AR_v * S_v)
+    cr_v = (2 * S_v)/(b_v * (1 + taper_v))
+    ct_v = taper_v * cr_v
+
+    cm_v = (2 * cr_v / 3) * ((1 + taper_v + (taper_v ** 2)) / (1 + taper_v))
+    xm_v = xm_w + L_v + (cm_w - cm_v) / 4
+    zm_v = zr_v + (b_v / 3) * ((1 + 2 * taper_v) / (1 + taper_v))
+
+    xr_v = xm_v - (zm_v - zr_v) * np.tan(sweep_v) + (cm_v - cr_v) / 4
+
+    zt_v = zr_v + b_v
+    xt_v = xr_v + (zt_v - zr_v) * np.tan(sweep_v) + (cr_v - ct_v) / 4
+
     # Update dictionary with new results
     airplane['b_w'] = b_w
     airplane['cr_w'] = cr_w
@@ -192,7 +200,8 @@ def geometry(airplane):
     # There is no need to return anything
     return None
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
                  lg_down, h_ground, W0_guess, airplane, method=2):
@@ -251,27 +260,27 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
     c_slat_c_wing = airplane['c_slat_c_wing']
     b_slat_b_wing = airplane['b_slat_b_wing']
     k_exc_drag = airplane['k_exc_drag']
-    
+
     # Default rugosity value (smmoth paint from Raymer Tab 12.5)
     rugosity = 0.634e-5
 
-    ### WING
+    # WING
 
     # Average t/c
     tc_avg = 0.5*(tcr_w + tct_w)
 
-    #Exposed Area
+    # Exposed Area
     Sexp = S_w - cr_w*D_f
 
-    #Wetted Area
+    # Wetted Area
     tau = tcr_w/tct_w
     Swet_w = 2*Sexp*(1 + 0.25*tcr_w*(1 + tau*taper_w)/(1 + taper_w))
 
     # Friction coefficient
     Cf_w = Cf_calc(Mach, altitude,
-                   length = cm_w,
-                   rugosity = rugosity,
-                   k_lam = 0.05)
+                   length=cm_w,
+                   rugosity=rugosity,
+                   k_lam=0.05)
 
     # Form factor
     FF_w = FF_surface(Mach, tcr_w, tct_w, sweep_w, b_w, cr_w, ct_w, cm_w)
@@ -282,20 +291,20 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
     # Drag coefficient
     CD0_w = Cf_w*FF_w*Q_w*Swet_w/S_w
 
-    ### HORIZONTAL TAIL
+    # HORIZONTAL TAIL
 
-    #Exposed Area
+    # Exposed Area
     Sexp = S_h
 
-    #Wetted Area
+    # Wetted Area
     tau = tcr_h/tct_h
     Swet_h = 2*Sexp*(1 + 0.25*tcr_h*(1 + tau*taper_h)/(1 + taper_h))
 
     # Friction coefficient
     Cf_h = Cf_calc(Mach, altitude,
-                   length = cm_h,
-                   rugosity = rugosity,
-                   k_lam = 0.05)
+                   length=cm_h,
+                   rugosity=rugosity,
+                   k_lam=0.05)
 
     # Form factor
     FF_h = FF_surface(Mach, tcr_h, tct_h, sweep_h, b_h, cr_h, ct_h, cm_h)
@@ -306,20 +315,20 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
     # Drag coefficient
     CD0_h = Cf_h*FF_h*Q_h*Swet_h/S_w
 
-    ### VERTICAL TAIL
+    # VERTICAL TAIL
 
-    #Exposed Area
+    # Exposed Area
     Sexp = S_v
 
-    #Wetted Area
+    # Wetted Area
     tau = tcr_v/tct_v
     Swet_v = 2*Sexp*(1 + 0.25*tcr_v*(1 + tau*taper_v)/(1 + taper_v))
 
     # Friction coefficient
     Cf_v = Cf_calc(Mach, altitude,
-                   length = cm_v,
-                   rugosity = rugosity,
-                   k_lam = 0.05)
+                   length=cm_v,
+                   rugosity=rugosity,
+                   k_lam=0.05)
 
     # Form factor
     FF_v = FF_surface(Mach, tcr_v, tct_v, sweep_v, 2*b_v, cr_v, ct_v, cm_v)
@@ -330,7 +339,7 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
     # Drag coefficient
     CD0_v = Cf_v*FF_v*Q_v*Swet_v/S_w
 
-    ### FUSELAGE
+    # FUSELAGE
 
     # Wetted area
     lambda_fus = L_f/D_f
@@ -338,9 +347,9 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
 
     # Friction coefficient
     Cf_f = Cf_calc(Mach, altitude,
-                   length = L_f,
-                   rugosity = rugosity,
-                   k_lam = 0.05)
+                   length=L_f,
+                   rugosity=rugosity,
+                   k_lam=0.05)
 
     # Form factor
     FF_f = 1 + 60/lambda_fus**3 + lambda_fus/400
@@ -351,16 +360,16 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
     # Drag coefficient
     CD0_f = Cf_f*FF_f*Q_f*Swet_f/S_w
 
-    ### NACELLE
+    # NACELLE
 
     # Wetted area (where we take the number of nacelles into account)
     Swet_n = n_engines*np.pi*D_n*L_n
 
     # Friction coefficient
     Cf_n = Cf_calc(Mach, altitude,
-                   length = L_n,
-                   rugosity = rugosity,
-                   k_lam = 0.05)
+                   length=L_n,
+                   rugosity=rugosity,
+                   k_lam=0.05)
 
     # Form factor
     lambda_n = L_n/D_n
@@ -372,27 +381,28 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
     # Drag coefficient
     CD0_n = Cf_n*FF_n*Q_n*Swet_n/S_w
 
-    ### VISCOUS DRAG
+    # VISCOUS DRAG
 
     if method == 1:
-        
+
         # Total wetted area
         Swet = Swet_w + Swet_h + Swet_v + Swet_f + Swet_n
-    
+
         # Wetted area ratio
         Sr = Swet/S_w
-    
+
         # t/c correction
         tau = (Sr-2)/Sr + 1.9/Sr*(1 + 0.526*(4*tc_avg)**3)
-    
+
         # Other parameters for jet aircraft
         Af = 0.93
         clam = 0.05
         Tf = 1.1
-    
+
         # Friction coefficient (Howe Eq 6.13)
-        Cfe = 0.005*(1-2*clam/Sr)*tau*(1 - 0.2*Mach + 0.12*(Mach*np.sqrt(np.cos(sweep_w))/(Af - tc_avg))**20)*Tf*S_w**(-0.1)
-    
+        Cfe = 0.005*(1-2*clam/Sr)*tau*(1 - 0.2*Mach + 0.12*(Mach *
+                                                            np.sqrt(np.cos(sweep_w))/(Af - tc_avg))**20)*Tf*S_w**(-0.1)
+
         # Viscous drag
         CD0 = Cfe*Swet/S_w
 
@@ -401,29 +411,31 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
         # Add all drag coefficients
         CD0 = CD0_w + CD0_h + CD0_v + CD0_f + CD0_n
 
-    ### INDUCED
+    # INDUCED
 
     # Oswald Factor (Howe Eq 6.14)
     f_taper = 0.005*(1 + 1.5*(taper_w - 0.6)**2)
-    e = 1/(1 + 0.12*Mach**6)/(1 + (0.142 + AR_w*(10*tc_avg)**0.33*f_taper)/np.cos(sweep_w)**2 + 0.1*(3*n_engines_under_wing + 1)/(4 + AR_w)**0.8)
+    e = 1/(1 + 0.12*Mach**6)/(1 + (0.142 + AR_w*(10*tc_avg)**0.33*f_taper) /
+                              np.cos(sweep_w)**2 + 0.1*(3*n_engines_under_wing + 1)/(4 + AR_w)**0.8)
 
     # Induced drag term
     K = 1/np.pi/AR_w/e
 
-    ### GROUND EFFECT
+    # GROUND EFFECT
     if h_ground > 0:
         aux = 33*(h_ground/b_w)**1.5
-        Kge = aux/(1+aux) # Raymer Eq. 12.61
+        Kge = aux/(1+aux)  # Raymer Eq. 12.61
         K = K*Kge
 
-    ### Clean wing CLmax (Raymer Eq. 5.7)
+    # Clean wing CLmax (Raymer Eq. 5.7)
     CLmax_clean = 0.9*clmax_w*np.cos(sweep_w)
 
-    ### Flaps deflection
+    # Flaps deflection
     ct_w = cr_w*taper_w
     if max_flap_def > 0.0:
-        CD0_flap = 0.0023*b_flap_b_wing*flap_def*180/np.pi # Raymer Eq 12.37
-        sweep_flap=geo_change_sweep(0.25, 2-c_flap_c_wing, sweep_w, b_w/2, cr_w, ct_w)
+        CD0_flap = 0.0023*b_flap_b_wing*flap_def*180/np.pi  # Raymer Eq 12.37
+        sweep_flap = geo_change_sweep(
+            0.25, 2-c_flap_c_wing, sweep_w, b_w/2, cr_w, ct_w)
         if flap_type == 'plain':
             dclmax = 0.9
         elif flap_type == 'slotted':
@@ -434,15 +446,17 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
             dclmax = 1.6*c_flap_c_wing
         elif flap_type == 'triple slotted':
             dclmax = 1.9*c_flap_c_wing
-        deltaCLmax_flap = dclmax*b_flap_b_wing*np.cos(sweep_flap)*flap_def/max_flap_def # Raymer Eq 12.21
+        deltaCLmax_flap = dclmax*b_flap_b_wing * \
+            np.cos(sweep_flap)*flap_def/max_flap_def  # Raymer Eq 12.21
     else:
         CD0_flap = 0.0
         deltaCLmax_flap = 0.0
 
-    ### Slats deflection
+    # Slats deflection
     if max_slat_def > 0.0:
-        CD0_slat = 0.0023*b_slat_b_wing*slat_def*180/np.pi # Raymer Eq 12.37
-        sweep_slat=geo_change_sweep(0.25, c_slat_c_wing-1, sweep_w, b_w/2, cr_w, ct_w)
+        CD0_slat = 0.0023*b_slat_b_wing*slat_def*180/np.pi  # Raymer Eq 12.37
+        sweep_slat = geo_change_sweep(
+            0.25, c_slat_c_wing-1, sweep_w, b_w/2, cr_w, ct_w)
         if slat_type == 'fixed':
             dclmax = 0.2
         elif slat_type == 'flap':
@@ -451,7 +465,8 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
             dclmax = 0.3
         elif slat_type == 'slat':
             dclmax = 0.4*c_slat_c_wing
-        deltaCLmax_slat = dclmax*b_slat_b_wing*np.cos(sweep_slat)*slat_def/max_slat_def # Raymer Eq 12.21
+        deltaCLmax_slat = dclmax*b_slat_b_wing * \
+            np.cos(sweep_slat)*slat_def/max_slat_def  # Raymer Eq 12.21
     else:
         CD0_slat = 0.0
         deltaCLmax_slat = 0.0
@@ -459,24 +474,24 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
     # Maximum lift
     CLmax = CLmax_clean + deltaCLmax_flap + deltaCLmax_slat
 
-    ### Landing gear (ESDU)
+    # Landing gear (ESDU)
     lg_factor = (0.57 - 0.26*flap_def/max_flap_def)*1e-3
     CD0_lg = lg_down*lg_factor*(W0_guess/gravity)**0.785/S_w
 
-    ### Windmill engine
-    #Vn_V = 0.42
-    #CDwdm = (0.0785*D_n**2 + 1/(1 + 0.16*Mach**2)*np.pi/2*D_n**2*Vn_V*(1-Vn_V))/S_w
-    #CD0_wdm = n_engines_failed*CDwdm
-    CD0_wdm = n_engines_failed*0.3*np.pi/4*D_n**2/S_w # Raymer Eq 12.41
+    # Windmill engine
+    # Vn_V = 0.42
+    # CDwdm = (0.0785*D_n**2 + 1/(1 + 0.16*Mach**2)*np.pi/2*D_n**2*Vn_V*(1-Vn_V))/S_w
+    # CD0_wdm = n_engines_failed*CDwdm
+    CD0_wdm = n_engines_failed*0.3*np.pi/4*D_n**2/S_w  # Raymer Eq 12.41
 
     # Add all drag values found so far
     CD0 = CD0 + CD0_flap + CD0_slat + CD0_lg + CD0_wdm
 
-    ### Excrescence
+    # Excrescence
     CD0_exc = CD0*k_exc_drag/(1-k_exc_drag)
     CD0 = CD0 + CD0_exc
 
-    ### WAVE DRAG (Korn Equation)
+    # WAVE DRAG (Korn Equation)
 
     # The CL may get unreasonably high values for low Mach numbers.
     # This decreases Mdd, resulting in an unrealistic wave drag for
@@ -486,12 +501,13 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
     if Mach > 0.4:
 
         # Estimate flight CL
-        T,p,rho,mi = atmosphere(altitude)
+        T, p, rho, mi = atmosphere(altitude)
         a = np.sqrt(1.4*287*T)
         V = a*Mach
         CL = 2*W0_guess/rho/V**2/S_w
 
-        Mach_dd = 0.95/np.cos(sweep_w) - tc_avg/np.cos(sweep_w)**2 - CL/10/np.cos(sweep_w)**3
+        Mach_dd = 0.95/np.cos(sweep_w) - tc_avg / \
+            np.cos(sweep_w)**2 - CL/10/np.cos(sweep_w)**3
         Mach_crit = Mach_dd - (0.1/80)**(1/3)
 
         if (Mach > Mach_crit):
@@ -509,7 +525,8 @@ def aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
 
     return CD0, K, CLmax
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def engineTSFC(Mach, altitude, airplane):
 
@@ -517,19 +534,19 @@ def engineTSFC(Mach, altitude, airplane):
     BPR = airplane['BPR']
     Cbase = airplane['Cbase']
 
-    ### ADD CODE FROM SECTION 3.3 HERE ###
-
     T, p, rho, mi = atmosphere(altitude, 288.15)
-    sigma = rho/1.225
-    if BPR < 4.0:
-        C_base = 0.85/3600
+    sigma = rho / 1.225
+    if BPR < 4:
+        Cbase = 0.85/3600
     else:
-        C_base = 0.7/3600
-    
-    C = C_base*(1 - 0.15*BPR**0.65)*(1 + 0.28*(1 + 0.063*BPR**2)*Mach)*sigma**0.08
+        Cbase = 0.7/3600
+
+    C = Cbase*(1-0.15*(BPR**0.65)) * \
+        (1+0.28*(1+0.063*(BPR**2))*Mach)*(sigma**0.08)
     return C
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def empty_weight(W0_guess, T0_guess, airplane):
 
@@ -556,50 +573,52 @@ def empty_weight(W0_guess, T0_guess, airplane):
     x_nlg = airplane['x_nlg']
     x_mlg = airplane['x_mlg']
 
-    ### ADD CODE FROM SECTION 3.4 HERE ###
-    #? Wing Weight
-    Nz = 1.5*2.58                                                   #? Load Factor
-    S_csw = 0.15*S_w*(m2ft**2)                                      #? Control surface area
-    #! This equation uses British units! All areas are in ft2 and all weights are in lbs. Remember to make
-    #! conversions before and after using this equation.
-    #TODO ESSE WING WEIGHT TA ERRADO, NÂO SEI PQ
-    W_w = 0.0051*(W0_guess*kg2lbs*Nz)**0.557 *(S_w*m2ft**2)**0.649 *AR_w**0.55 *tcr_w**(-0.4) *(1+taper_w)**0.1 *(np.cos(sweep_w))**(-1.0) *S_csw**0.1
-    xCG_w = xm_w + 0.4*cm_w
-    
-    #? Horizontal Tail Weight
+    # Wing Weight
+    Nz = 1.5*2.5
+
+    Sc_w = 0.15*S_w*((1/ft2m)**2)
+    W0_conv = W0_guess*(1/lb2N)
+    S_w_conv = S_w * ((1/ft2m)**2)
+    W_w = 0.0051*((W0_conv*Nz)**0.557)*(S_w_conv**0.649)*(AR_w**0.55) *\
+        (tcr_w**-0.4)*((1+taper_w)**0.1)*(np.cos(sweep_w)**-1)*(Sc_w**0.1)
+
+    W_w = W_w*lb2N
+    xcg_w = xm_w + 0.4*cm_w
+
+    # Horizontal tail weight
     W_h = 27*gravity*S_h
-    xCG_h = xm_h + 0.4*cm_h
-    
-    #? Vertical Tail Height
+    xcg_h = xm_h + 0.4*cm_h
+
+    # Vertical tail weight
     W_v = 27*gravity*S_v
-    xCG_v = xm_v + 0.4*cm_v
-    
-    #? Fuselage Weight
+    xcg_v = xm_v + 0.4*cm_v
+
+    # Fuselage weight
     W_f = 24*gravity*Swet_f
-    xCG_f = 0.45*L_f
-    
-    #? Nose Landing Gear Weight
+    xcg_f = 0.45*L_f
+
+    # Nose landing gear weight
     W_nlg = 0.15*0.043*W0_guess
-    xCG_nlg = x_nlg
-    
-    #? Main Landing Gear Weight
+    xcg_nlg = x_nlg
+
+    # Main landing gear weight
     W_mlg = 0.85*0.043*W0_guess
-    xCG_mlg = x_mlg
-    
-    #? Installed Engine Weight
-    T_eng = T0_guess/n_engines
-    W_eng = 14.7*gravity*pow(T_eng/1000, 1.1)*np.exp(-0.045*BPR)
-    W_eng_installed = 1.3*n_engines*W_eng
-    xCG_eng = x_n + 0.5*L_n 
-    
-    #? All-else Weight
+    xcg_mlg = x_mlg
+
+    # Installed engine weight
+    Teng_s = T0_guess/n_engines
+    W_engs = 14.7*gravity*((Teng_s/1000)**1.1)*np.exp(-0.045*BPR)
+    W_eng_installed = 1.3*n_engines*W_engs
+    xcg_eng = x_n+0.5*L_n
+
+    # All-else weight
     W_allelse = 0.17*W0_guess
-    xCG_allelse = 0.45*L_f
-    
-    #? Empty Weight
-    We = W_w + W_h + W_v + W_f + W_nlg + W_mlg + W_eng + W_allelse
-    xcg_e = (W_w*xCG_w + W_h*xCG_h + W_v*xCG_v + W_f*xCG_f + W_nlg*xCG_nlg +\
-        W_mlg*xCG_mlg + W_eng_installed*xCG_eng + W_allelse*xCG_allelse)/We
+    xcg_ae = 0.45*L_f
+
+    # EMPTY WEIGHT
+    We = W_w + W_h + W_v + W_f + W_nlg + W_mlg + W_eng_installed + W_allelse
+    xcg_e = (W_w*xcg_w + W_h*xcg_h + W_v*xcg_v + W_f*xcg_f + W_nlg*xcg_nlg +
+             W_mlg*xcg_mlg + W_eng_installed*xcg_eng + W_allelse*xcg_ae) / We
 
     # Update dictionary
     airplane['W_w'] = W_w
@@ -613,7 +632,8 @@ def empty_weight(W0_guess, T0_guess, airplane):
 
     return We, xcg_e
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def fuel_weight(W0_guess, airplane):
 
@@ -627,7 +647,7 @@ def fuel_weight(W0_guess, airplane):
     Mach_altcruise = airplane['Mach_altcruise']
     range_altcruise = airplane['range_altcruise']
 
-    ### ADD CODE FROM SECTION 3.5 HERE ###
+    # Cruise condition
     Mach = Mach_cruise
     altitude = altitude_cruise
     n_engines_failed = 0
@@ -635,10 +655,12 @@ def fuel_weight(W0_guess, airplane):
     slat_def = 0.0
     lg_down = 0
     h_ground = 0
-    CD0_cruise, K_cruise,_ = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
-                    lg_down, h_ground, W0_guess, airplane, method=2)
-    C_cruise = engineTSFC(Mach_cruise, altitude_cruise, airplane)
-    
+    CD0_cruise, K_cruise, _ = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                                           lg_down, h_ground, W0_guess, airplane, method=2)
+
+    C_cruise = engineTSFC(Mach, altitude, airplane)
+
+    # Alt cruise Condition
     Mach = Mach_altcruise
     altitude = altitude_altcruise
     n_engines_failed = 0
@@ -646,59 +668,72 @@ def fuel_weight(W0_guess, airplane):
     slat_def = 0.0
     lg_down = 0
     h_ground = 0
-    CD0_altcruise, K_altcruise,_ = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
-                    lg_down, h_ground, W0_guess, airplane, method=2)
-    C_altcruise = engineTSFC(Mach_altcruise, altitude_altcruise, airplane)
-    Mf = 1.0
-    
-    #? Engine Start and warp-up
+    CD0_altcruise, K_altcruise, _ = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                                                 lg_down, h_ground, W0_guess, airplane, method=2)
+
+    C_altcruise = engineTSFC(Mach, altitude, airplane)
+
+    Mf = 1
+
+    # Engine Start
     Mf = Mf*0.99
-    #? Taxi
+
+    # Taxi
     Mf = Mf*0.99
-    #? Take-off
+
+    # Take Off
     Mf = Mf*0.995
-    #? Climb
-    Mf = Mf*0.98
-    #? Cruise
+
+    # Climb
+    Mf = Mf*0.980
+
+    # Cruise
     Mf_cruise = Mf
-    
-    T,p,rho,mi = atmosphere(altitude_cruise, 288.15)
-    a_cruise = np.sqrt(gamma*R*T)
+
+    T, p, rho, mi = atmosphere(altitude_cruise, 288.15)
+    a_cruise = np.sqrt(gamma_ar*R_ar*T)
     V_cruise = Mach_cruise*a_cruise
+
     W_cruise = Mf*W0_guess
-    CL_cruise = 2*W_cruise/(rho*S_w*V_cruise**2)
-    CD_cruise = CD0_cruise + K_cruise*CL_cruise**2
-    FF_cruise = np.exp(-range_cruise*C_cruise*CD_cruise/(V_cruise*CL_cruise))
+
+    CL_cruise = (2*W_cruise)/(rho*S_w*V_cruise**2)
+    CD_cruise = CD0_cruise + K_cruise*(CL_cruise**2)
+    FF_cruise = np.exp(-(range_cruise*C_cruise*CD_cruise)/(V_cruise*CL_cruise))
     Mf = Mf*FF_cruise
-    
-    #? Loitter
-    LD_max = 1/(2*np.sqrt(CD0_cruise*K_cruise))
+
+    # Loiter
+    L_D_max = 1/(2*np.sqrt(CD0_cruise*K_cruise))
     C_loiter = 0.8*C_cruise
-    FF_loiter = np.exp(-loiter_time*C_loiter/LD_max)
+
+    FF_loiter = np.exp(-(loiter_time*C_loiter)/(L_D_max))
     Mf = Mf*FF_loiter
-    
-    #? Descent
+
+    # Descent
     Mf = Mf*0.99
-    
-    #? Alternate Cruise
-    T,p,rho,mi = atmosphere(altitude_altcruise, 288.15)
-    a_altcruise = np.sqrt(gamma*R*T)
+
+    # Alt cruise
+    T, p, rho, mi = atmosphere(altitude_altcruise, 288.15)
+    a_altcruise = np.sqrt(gamma_ar*R_ar*T)
     V_altcruise = Mach_altcruise*a_altcruise
+
     W_altcruise = Mf*W0_guess
-    CL_altcruise = 2*W_altcruise/(rho*S_w*V_altcruise**2)
-    CD_altcruise = CD0_altcruise + K_altcruise*CL_altcruise**2
-    FF_altcruise = np.exp(-range_altcruise*C_altcruise*CD_altcruise/(V_altcruise*CL_altcruise))
+
+    CL_altcruise = (2*W_altcruise)/(rho*S_w*V_altcruise**2)
+    CD_altcruise = CD0_altcruise + K_altcruise*(CL_altcruise**2)
+    FF_altcruise = np.exp(-(range_altcruise*C_altcruise *
+                          CD_altcruise)/(V_altcruise*CL_altcruise))
     Mf = Mf*FF_altcruise
-    
-    #? Landing Taxi and Shutdown
+
+    # Landing taxi and shutdown
     Mf = Mf*0.992
-    
-    #? Fuel Weight
-    Wf = 1.06*(1 - Mf)*W0_guess    
+
+    # FUEL WEIGHT
+    Wf = 1.06*(1-Mf)*W0_guess
 
     return Wf, Mf_cruise
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def weight(W0_guess, T0_guess, airplane):
 
@@ -717,10 +752,10 @@ def weight(W0_guess, T0_guess, airplane):
         W0_guess = W0
     return W0, We, Wf, Mf_cruise, xcg_e
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def performance(W0, Mf_cruise, airplane):
-
     '''
     This function computes the required thrust and wing areas
     required to meet takeoff, landing, climb, and cruise requirements.
@@ -747,40 +782,122 @@ def performance(W0, Mf_cruise, airplane):
     MLW_frac = airplane['MLW_frac']
     altitude_cruise = airplane['altitude_cruise']
     Mach_cruise = airplane['Mach_cruise']
+
+    #? Takeoff
+    T, p, rho, mi = atmosphere(altitude_takeoff, 288.15)
+    sigma = rho/1.225
     
-    ### ADD CODE FROM SECTION 3.7.3 TO SECTION 3.7.5 HERE ###
+    CD0_TO, K_TO, CLmax_TO = aerodynamics(Mach=0.2, altitude=altitude_takeoff, n_engines_failed=0, 
+                                 flap_def=TO_flap_def, slat_def=TO_slat_def, lg_down=1, 
+                                 h_ground=h_ground, W0_guess=W0, airplane=airplane, method=2)
+    T0_W0 = 0.2387*W0/(sigma*CLmax_TO*distance_takeoff*S_w)
+    T0_TO = T0_W0*W0
+    
+    #? Landing
+    T, p, rho, mi = atmosphere(altitude_landing, 288.15)
+    CD0_LD, K_LD, CLmax_LD = aerodynamics(Mach=0.2, altitude=altitude_landing, n_engines_failed=0, 
+                                 flap_def=LD_flap_def, slat_def=LD_slat_def, lg_down=1, 
+                                 h_ground=h_ground, W0_guess=W0*MLW_frac, airplane=airplane, method=2)
+    sigma = rho/1.225
+    #! BFL
+    BFL = distance_landing
+    Va = 1.701*np.sqrt(BFL)
+    Vs = Va/1.3
+    S_w_lan = 2*W0*MLW_frac/(rho*Vs**2*CLmax_LD)
+    deltaS_wlan = S_w - S_w_lan
+    
+    #? Cruise analysis
+    T, p, rho, mi = atmosphere(altitude_cruise, 288.15)
+    a_cruise = np.sqrt(gamma_ar*R_ar*T)
+    V_cruise = Mach_cruise*a_cruise
+    W_cruise = Mf_cruise*W0
+    
+    CD0_cruise, K_cruise, CLmax_cruise = aerodynamics(Mach=Mach_cruise, altitude=altitude_cruise, 
+                                n_engines_failed=0, flap_def=0.0, slat_def=0.0, lg_down=0, 
+                                h_ground=0, W0_guess=W_cruise, airplane=airplane, method=2)
+    CL_cruise = 2*W_cruise/(rho*S_w*V_cruise**2)
+    CD_cruise = CD0_cruise + K_cruise*CL_cruise**2
+    T_cruise = rho*V_cruise**2*S_w*CD_cruise/2
+    kT = (0.0013*BPR - 0.0397)*altitude_cruise/1000 - 0.0248*BPR + 0.7125 
+    T0_cruise = T_cruise/kT
 
-
-    ### CLIMB
-
-    # Define standard function for climb analysis
-    def climb_analysis(grad, Ks, altitude, CLmax_guess,
-                       lg_down, h_ground_climb, flap_def, slat_def, n_engines_failed, Mf,
-                       kT):
-
+    #? Climb
+    #def climb_analysis(grad, Ks, altitude, CLmax_guess, lg_down, h_ground_climb, flap_def, 
+    #                   slat_def, n_engines_failed, Mf,kT):
+    def climb_analysis(gamma_climb, ks, h_climb, CLmax_guess, lg_down, h_ground_climb, flap_def, slat_def,
+                       n_engines_failed, Mf, kT):
         '''
         We need a guess for CLmax just to get an approximate drag polar for
         speed computation. We will get the correct CLmax from the aerodynamics module
 
         kT: Thrust decay factor (e.g. use 0.94 for maximum continuous thrust)
         '''
+        T,p,rho,mi = atmosphere(h_climb, 288.15)
+        Vs = np.sqrt(2*W0*Mf/(rho*S_w*CLmax_guess))
+        V_climb = ks*Vs
+        a_climb = np.sqrt(gamma_ar*R_ar*T)
+        M_climb = V_climb/a_climb
+        CD0_climb, K_climb, CLmax_climb = aerodynamics(Mach=M_climb, altitude=h_climb, 
+                                n_engines_failed=n_engines_failed, flap_def=flap_def, slat_def=slat_def,
+                                lg_down=lg_down, h_ground=h_ground_climb, W0_guess=W0*Mf, airplane=airplane, method=2)
+        CL_climb = CLmax_climb/ks**2
+        CD_climb = CD0_climb + K_climb*CL_climb**2
+        T0_W_climb = n_engines/(n_engines - n_engines_failed)*(gamma_climb + CD_climb/CL_climb)
+        T0_climb = T0_W_climb*W0*Mf/kT
 
-        ### ADD CODE FROM SECTION 3.7.6 HERE ###
+        return T0_climb
 
+    #? FAR25.111
+    if n_engines == 2:
+        gamma_climb_25111 = 0.012
+        gamma_climb_25121a = 0.000
+        gamma_climb_25121b = 0.024
+        gamma_climb_25121c = 0.012
+        gamma_climb_25121d = 0.021
+    elif n_engines == 3:
+        gamma_climb_25111 = 0.015
+        gamma_climb_25121a = 0.003
+        gamma_climb_25121b = 0.027
+        gamma_climb_25121c = 0.015
+        gamma_climb_25121d = 0.024
+    elif n_engines == 4:
+        gamma_climb_25111 = 0.017
+        gamma_climb_25121a = 0.005
+        gamma_climb_25121b = 0.030
+        gamma_climb_25121c = 0.017
+        gamma_climb_25121d = 0.027
+    else:
+        print('Too many or too few engines')
+    
+    T0_FAR25111 = climb_analysis(gamma_climb=gamma_climb_25111, ks=1.2, h_climb=altitude_takeoff, 
+                        CLmax_guess=CLmax_TO, lg_down=0, h_ground_climb=h_ground, flap_def=TO_flap_def, 
+                        slat_def=TO_flap_def, n_engines_failed=1, Mf=1.0, kT=1.0)
+    T0_FAR25121a = climb_analysis(gamma_climb=gamma_climb_25121a, ks=1.1, h_climb=altitude_takeoff,   
+                        CLmax_guess=CLmax_TO, lg_down=1, h_ground_climb=h_ground, flap_def=TO_flap_def, 
+                        slat_def=TO_slat_def, n_engines_failed=1, Mf=1.0, kT=1.0)
+    T0_FAR25121b = climb_analysis(gamma_climb=gamma_climb_25121b, ks=1.2, h_climb=altitude_takeoff,   
+                        CLmax_guess=CLmax_TO, lg_down=0, h_ground_climb=0, flap_def=TO_flap_def, 
+                        slat_def=TO_slat_def, n_engines_failed=1, Mf=1.0, kT=1.0)
+    T0_FAR25121c = climb_analysis(gamma_climb=gamma_climb_25121c, ks=1.25, h_climb=altitude_takeoff,   
+                        CLmax_guess=CLmax_TO, lg_down=0, h_ground_climb=0, flap_def=0.0, 
+                        slat_def=0.0, n_engines_failed=1, Mf=1.0, kT=0.94)
+    T0_FAR25119 = climb_analysis(gamma_climb=0.032, ks=1.3, h_climb=altitude_landing,   
+                        CLmax_guess=CLmax_LD, lg_down=1, h_ground_climb=0, flap_def=LD_flap_def, 
+                        slat_def=LD_slat_def, n_engines_failed=0, Mf=MLW_frac, kT=1.0)
+    T0_FAR25121d = climb_analysis(gamma_climb=gamma_climb_25121d, ks=1.4, h_climb=altitude_landing,   
+                        CLmax_guess=CLmax_LD, lg_down=1, h_ground_climb=0, flap_def=0.8*LD_flap_def, 
+                        slat_def=0.8*LD_slat_def, n_engines_failed=0, Mf=MLW_frac, kT=1.0)
+    
+    T0vec = [T0_TO, T0_cruise, T0_FAR25111, T0_FAR25121a, T0_FAR25121b, T0_FAR25121c, T0_FAR25119, T0_FAR25121d]
+    T0 = 1.05*max(T0vec)
+    return T0, T0vec, deltaS_wlan, CLmax_TO
 
-        return T0
+# ----------------------------------------
 
-    ### CONTINUE THE CODE FROM SECTION 3.7.6 HERE ###
-
-    ### ADD CODE FROM SECTION 3.7.7 HERE ###
-
-    return T0, T0vec, deltaS_wlan, CLmaxTO
-
-#----------------------------------------
 
 def thrust_matching(W0_guess, T0_guess, airplane):
 
-    ### ADD CODE FROM SECTION 3.8 HERE ###
+    # ADD CODE FROM SECTION 3.8 HERE ###
 
     # Update dictionary
     airplane['W0'] = W0
@@ -795,7 +912,8 @@ def thrust_matching(W0_guess, T0_guess, airplane):
     # Return
     return None
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def balance(airplane):
 
@@ -839,8 +957,8 @@ def balance(airplane):
     n_engines = airplane['n_engines']
     CLmaxTO = airplane['CLmaxTO']
     rho_f = airplane['rho_f']
-    
-    ### ADD CODE FROM SECTION 3.9 HERE ###
+
+    # ADD CODE FROM SECTION 3.9 HERE ###
 
     # Update dictionary
     airplane['xcg_fwd'] = xcg_fwd
@@ -853,7 +971,8 @@ def balance(airplane):
 
     return None
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def landing_gear(airplane):
 
@@ -867,7 +986,7 @@ def landing_gear(airplane):
     x_tailstrike = airplane['x_tailstrike']
     z_tailstrike = airplane['z_tailstrike']
 
-    ### ADD CODE FROM SECTION 3.10 HERE ###
+    # ADD CODE FROM SECTION 3.10 HERE ###
 
     # Update dictionary
     airplane['frac_nlg_fwd'] = frac_nlg_fwd
@@ -878,11 +997,11 @@ def landing_gear(airplane):
 
     return None
 
-#========================================
+# ========================================
 # AUXILIARY FUNCTIONS
 
-def plot3d(airplane, figname='3dview.png'):
 
+def plot3d(airplane, figname='3dview.png'):
     '''
     This function generates a 3D plot of the aircraft
     '''
@@ -940,8 +1059,8 @@ def plot3d(airplane, figname='3dview.png'):
         xnp = airplane['xnp']
     else:
         xnp = None
-           
-    ### PLOT
+
+    # PLOT
 
     fig = plt.figure()
     ax = fig.gca(projection='3d')
@@ -979,50 +1098,54 @@ def plot3d(airplane, figname='3dview.png'):
     # Mean aerodynamic chords
     ax.plot([xm_w, xm_w+cm_w],
             [ym_w, ym_w],
-            [zm_w, zm_w],'g')
+            [zm_w, zm_w], 'g')
     ax.plot([xm_h, xm_h+cm_h],
             [ym_h, ym_h],
-            [zm_h, zm_h],'g')
+            [zm_h, zm_h], 'g')
     ax.plot([xm_v, xm_v+cm_v],
             [0.0, 0.0],
-            [zm_v, zm_v],'g')
+            [zm_v, zm_v], 'g')
 
     # Center of gravity
     if xcg_fwd is not None:
         ax.plot([xcg_fwd, xcg_aft],
                 [0.0, 0.0],
-                [0.0, 0.0],'o')
+                [0.0, 0.0], 'o')
 
     # Neutral point
     if xnp is not None:
         ax.plot([xnp, xnp],
                 [0.0, 0.0],
-                [0.0, 0.0],'o')
+                [0.0, 0.0], 'o')
 
     # Create cubic bounding box to simulate equal aspect ratio
     X = np.array([xr_w, xt_h+ct_h, xt_v+ct_v])
     Y = np.array([-yt_w, yt_w])
     Z = np.array([zt_w, zt_h, zt_v])
-    max_range = np.array([X.max()-X.min(), Y.max()-Y.min(), Z.max()-Z.min()]).max()
-    Xb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][0].flatten() + 0.5*(X.max()+X.min())
-    Yb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][1].flatten() + 0.5*(Y.max()+Y.min())
-    Zb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(Z.max()+Z.min())
+    max_range = np.array(
+        [X.max()-X.min(), Y.max()-Y.min(), Z.max()-Z.min()]).max()
+    Xb = 0.5*max_range*np.mgrid[-1:2:2, -1:2:2, -
+                                1:2:2][0].flatten() + 0.5*(X.max()+X.min())
+    Yb = 0.5*max_range*np.mgrid[-1:2:2, -1:2:2, -
+                                1:2:2][1].flatten() + 0.5*(Y.max()+Y.min())
+    Zb = 0.5*max_range*np.mgrid[-1:2:2, -1:2:2, -
+                                1:2:2][2].flatten() + 0.5*(Z.max()+Z.min())
 
     # Comment or uncomment following both lines to test the fake bounding box:
     for xb, yb, zb in zip(Xb, Yb, Zb):
         ax.plot([xb], [yb], [zb], 'w')
 
     # Set initial point of view
-    ax.view_init(45,-135)
+    ax.view_init(45, -135)
 
     # Save figure
     plt.show()
-    fig.savefig(figname,dpi=300)
+    fig.savefig(figname, dpi=300)
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def atmosphere(z, Tba=288.15):
-
     '''
     Funçao que retorna a Temperatura, Pressao e Densidade para uma determinada
     altitude z [m]. Essa funçao usa o modelo padrao de atmosfera para a
@@ -1046,13 +1169,13 @@ def atmosphere(z, Tba=288.15):
     # pressure at the base of each layer
     pb = [101325, 22632, 5474.87, 868.014, 110.906]
     # temperature at the base of each layer
-    Tstdb = [288.15, 216.65, 216.65, 228.65, 270.65];
+    Tstdb = [288.15, 216.65, 216.65, 228.65, 270.65]
     # temperature correction
     Tb = Tba-Tstdb[0]
     # air viscosity
-    mi0 = 18.27e-6 # [Pa s]
-    T0 = 291.15 # [K]
-    C = 120 # [K]
+    mi0 = 18.27e-6  # [Pa s]
+    T0 = 291.15  # [K]
+    C = 120  # [K]
 
     # geopotential altitude
     H = r*z/(r+z)
@@ -1086,25 +1209,26 @@ def atmosphere(z, Tba=288.15):
     rho = p/R/T
 
     # Calculating viscosity with Sutherland's Formula
-    mi=mi0*(T0+C)/(T+C)*(T/T0)**(1.5)
+    mi = mi0*(T0+C)/(T+C)*(T/T0)**(1.5)
 
-    return T,p,rho,mi
+    return T, p, rho, mi
 
-#----------------------------------------
+# ----------------------------------------
 
-def geo_change_sweep(x,y,sweep_x,panel_length,chord_root,chord_tip):
 
+def geo_change_sweep(x, y, sweep_x, panel_length, chord_root, chord_tip):
     '''
     This function converts sweep computed at chord fraction x into
     sweep measured at chord fraction y
     (x and y should be between 0 (leading edge) and 1 (trailing edge).
     '''
 
-    sweep_y=sweep_x+np.arctan((x-y)*(chord_root-chord_tip)/panel_length)
+    sweep_y = sweep_x+np.arctan((x-y)*(chord_root-chord_tip)/panel_length)
 
     return sweep_y
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def Cf_calc(Mach, altitude, length, rugosity, k_lam, Tba=288.15):
     '''
@@ -1114,12 +1238,12 @@ def Cf_calc(Mach, altitude, length, rugosity, k_lam, Tba=288.15):
     k_lam: float -> Fraction of the length (from 0 to 1) where
                     transition occurs
     '''
-    
+
     # Dados atmosféricos
     T, p, rho, mi = atmosphere(altitude, Tba)
 
     # Velocidade
-    v = np.sqrt(1.4*287*T)*Mach
+    v = np.sqrt(1.4*R_ar*T)*Mach
 
     # Reynolds na transição
     Re_conv = rho*v*k_lam*length/mi
@@ -1146,7 +1270,8 @@ def Cf_calc(Mach, altitude, length, rugosity, k_lam, Tba=288.15):
 
     return Cf
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def FF_surface(Mach, tcr, tct, sweep, b, cr, ct, cm, x_c_max_tc=0.4):
     '''
@@ -1168,14 +1293,16 @@ def FF_surface(Mach, tcr, tct, sweep, b, cr, ct, cm, x_c_max_tc=0.4):
     t_c = (tcr + tct)/2
 
     # Swee at maximum thickness position
-    sweep_maxtc=geo_change_sweep(0.25, x_c_max_tc, sweep, b/2, cr, ct)
+    sweep_maxtc = geo_change_sweep(0.25, x_c_max_tc, sweep, b/2, cr, ct)
 
     # Form factor
-    FF = 1.34*Mach**0.18*np.cos(sweep_maxtc)**0.28*(1 + 0.6*t_c/x_c_max_tc/cm + 100*(t_c)**4)
+    FF = 1.34*Mach**0.18*np.cos(sweep_maxtc)**0.28 * \
+        (1 + 0.6*t_c/x_c_max_tc/cm + 100*(t_c)**4)
 
     return FF
 
-#----------------------------------------
+# ----------------------------------------
+
 
 def standard_airplane():
     '''
@@ -1183,102 +1310,117 @@ def standard_airplane():
     any new aircraft.
     '''
 
-    airplane = {'S_w' : 93.5, # Wing area [m2]
-                'AR_w' : 8.43,  # Wing aspect ratio
-                'taper_w' : 0.235, # Wing taper ratio
-                'sweep_w' : 17.45*np.pi/180, # Wing sweep [rad]
-                'dihedral_w' : 5*np.pi/180, # Wing dihedral [rad]
-                'xr_w' : 13.5, # Longitudinal position of the wing (with respect to the fuselage nose) [m]
-                'zr_w' : 0.0, # Vertical position of the wing (with respect to the fuselage nose) [m]
-                'tcr_w' : 0.123, # t/c of the root section of the wing
-                'tct_w' : 0.096, # t/c of the tip section of the wing
-                
-                'Cht' : 0.94, # Horizontal tail volume coefficient
-                'Lc_h' : 4.83, # Non-dimensional lever of the horizontal tail (lever/wing_mac)
-                'AR_h' : 4.64, # HT aspect ratio
-                'taper_h' : 0.39, # HT taper ratio
-                'sweep_h' : 26*np.pi/180, # HT sweep [rad]
-                'dihedral_h' : 2*np.pi/180, # HT dihedral [rad]
-                'zr_h' : 4.359, # Vertical position of the HT [m]
-                'tcr_h' : 0.1, # t/c of the root section of the HT
-                'tct_h' : 0.1, # t/c of the tip section of the HT
-                'eta_h' : 1.0, # Dynamic pressure factor of the HT
-                
-                'Cvt' : 0.088, # Vertical tail volume coefficient
-                'Lb_v' : 0.55, # Non-dimensional lever of the vertical tail (lever/wing_span)
-                'AR_v' : 1.27, # VT aspect ratio
-                'taper_v' : 0.74, # VT taper ratio
-                'sweep_v' : 41*np.pi/180, # VT sweep [rad]
-                'zr_v' : 0.0, # Vertical position of the VT [m]
-                'tcr_v' : 0.1, # t/c of the root section of the VT
-                'tct_v' : 0.1, # t/c of the tip section of the VT
-                
-                'L_f' : 32.5, # Fuselage length [m]
-                'D_f' : 3.3, # Fuselage diameter [m]
-                
-                'x_n' : 23.2, # Longitudinal position of the nacelle frontal face [m]
-                'y_n' : 2.6, # Lateral position of the nacelle centerline [m]
-                'z_n' : 0.0, # Vertical position of the nacelle centerline [m]
-                'L_n' : 4.3, # Nacelle length [m]
-                'D_n' : 1.5, # Nacelle diameter [m]
-                
-                'n_engines' : 2, # Number of engines
-                'n_engines_under_wing' : 0, # Number of engines installed under the wing
-                'BPR' : 3.04, # Engine bypass ratio
-                'Cbase' : None, # Base engine TSFC [1/s] (use 'None' for Howe's values)
-                
-                'x_nlg' : 3.6, # Longitudinal position of the nose landing gear [m]
-                'x_mlg' : 17.8, # Longitudinal position of the main landing gear [m]
-                'y_mlg' : 2.47, # Lateral position of the main landing gear [m]
-                'z_lg' : -2.0, # Vertical position of the landing gear [m]
-                'x_tailstrike' : 23.68, # Longitudinal position of critical tailstrike point [m]
-                'z_tailstrike' : -0.84, # Vertical position of critical tailstrike point [m]
-                
-                'c_tank_c_w' : 0.4, # Fraction of the wing chord occupied by the fuel tank
-                'x_tank_c_w' : 0.2, # Fraction of the wing chord where fuel tank starts
-                
-                'clmax_w' : 2.1, # Maximum lift coefficient of wing airfoil
-    
-                'TO_flap_def' : 20*np.pi/180, # Takeoff flap deflection [rad]
-                'LD_flap_def' : 40*np.pi/180, # Landing flap deflection [rad]
-                'flap_type' : 'double slotted',  # Flap type
-                'c_flap_c_wing' : 1.2, # chord_with_deflected_flaps/chord_with_retracted_flaps
-                'b_flap_b_wing' : 0.6, # Fraction of the wing span occupied by flaps
-                
-                'TO_slat_def' : 0*np.pi/180, # Takeoff slat deflection [rad]
-                'LD_slat_def' : 0*np.pi/180, # Landing slat deflection [rad]
-                'slat_type' : 'slat', # Slat type
-                'c_slat_c_wing' : 1.05, # chord_with_deflected_slats/chord_with_retracted_slats
-                'b_slat_b_wing' : 0.75, # Fraction of the wing span occupied by slats
-                
-                'h_ground' : 35.0*ft2m, # Distance to the ground for ground effect computation [m]
-                'k_exc_drag' : 0.03, # Excrescence drag factor
-                
-                'altitude_takeoff' : 0.0, # Altitude for takeoff computation [m]
-                'distance_takeoff' : 1800.0, # Required takeoff distance [m]
-                
-                'altitude_landing' : 0.0, # Altitude for landing computation [m]
-                'distance_landing' : 1800.0, # Required landing distance [m] (The actual Fokker100 distance is 1350 m but it is very restrictive compared to the historical regression. Therefore I kept the same TO distance since the aircraft should takeoff and land at the same runway)
-                'MLW_frac' : 38300/41500, # Max Landing Weight / Max Takeoff Weight
-                
-                'altitude_cruise' : 35000*ft2m, # Cruise altitude [m]
-                'Mach_cruise' : 0.73, # Cruise Mach number
-                'range_cruise' : 1200*nm2m, # Cruise range [m]
-                
-                'loiter_time' : 45*60, # Loiter time [s]
-                
-                'altitude_altcruise' : 4572, # Alternative cruise altitude [m]
-                'Mach_altcruise' : 0.4, # Alternative cruise Mach number
-                'range_altcruise' : 200*nm2m, # Alternative cruise range [m]
-                
-                'W_payload' : 107*91*gravity, # Payload weight [N]
-                'xcg_payload' : 14.4, # Longitudinal position of the Payload center of gravity [m]
-                
-                'W_crew' : 5*91*gravity, # Crew weight [N]
-                'xcg_crew' : 2.5, # Longitudinal position of the Crew center of gravity [m]
-                
-                'rho_f' : 804, # Fuel density kg/m3 (This is Jet A-1)
+    airplane = {'S_w': 93.5,  # Wing area [m2]
+                'AR_w': 8.43,  # Wing aspect ratio
+                'taper_w': 0.235,  # Wing taper ratio
+                'sweep_w': 17.45*np.pi/180,  # Wing sweep [rad]
+                'dihedral_w': 5*np.pi/180,  # Wing dihedral [rad]
+                # Longitudinal position of the wing (with respect to the fuselage nose) [m]
+                'xr_w': 13.5,
+                # Vertical position of the wing (with respect to the fuselage nose) [m]
+                'zr_w': 0.0,
+                'tcr_w': 0.123,  # t/c of the root section of the wing
+                'tct_w': 0.096,  # t/c of the tip section of the wing
+
+                'Cht': 0.94,  # Horizontal tail volume coefficient
+                # Non-dimensional lever of the horizontal tail (lever/wing_mac)
+                'Lc_h': 4.83,
+                'AR_h': 4.64,  # HT aspect ratio
+                'taper_h': 0.39,  # HT taper ratio
+                'sweep_h': 26*np.pi/180,  # HT sweep [rad]
+                'dihedral_h': 2*np.pi/180,  # HT dihedral [rad]
+                'zr_h': 4.359,  # Vertical position of the HT [m]
+                'tcr_h': 0.1,  # t/c of the root section of the HT
+                'tct_h': 0.1,  # t/c of the tip section of the HT
+                'eta_h': 1.0,  # Dynamic pressure factor of the HT
+
+                'Cvt': 0.088,  # Vertical tail volume coefficient
+                # Non-dimensional lever of the vertical tail (lever/wing_span)
+                'Lb_v': 0.55,
+                'AR_v': 1.27,  # VT aspect ratio
+                'taper_v': 0.74,  # VT taper ratio
+                'sweep_v': 41*np.pi/180,  # VT sweep [rad]
+                'zr_v': 0.0,  # Vertical position of the VT [m]
+                'tcr_v': 0.1,  # t/c of the root section of the VT
+                'tct_v': 0.1,  # t/c of the tip section of the VT
+
+                'L_f': 32.5,  # Fuselage length [m]
+                'D_f': 3.3,  # Fuselage diameter [m]
+
+                # Longitudinal position of the nacelle frontal face [m]
+                'x_n': 23.2,
+                'y_n': 2.6,  # Lateral position of the nacelle centerline [m]
+                'z_n': 0.0,  # Vertical position of the nacelle centerline [m]
+                'L_n': 4.3,  # Nacelle length [m]
+                'D_n': 1.5,  # Nacelle diameter [m]
+
+                'n_engines': 2,  # Number of engines
+                'n_engines_under_wing': 0,  # Number of engines installed under the wing
+                'BPR': 3.04,  # Engine bypass ratio
+                # Base engine TSFC [1/s] (use 'None' for Howe's values)
+                'Cbase': None,
+
+                # Longitudinal position of the nose landing gear [m]
+                'x_nlg': 3.6,
+                # Longitudinal position of the main landing gear [m]
+                'x_mlg': 17.8,
+                'y_mlg': 2.47,  # Lateral position of the main landing gear [m]
+                'z_lg': -2.0,  # Vertical position of the landing gear [m]
+                # Longitudinal position of critical tailstrike point [m]
+                'x_tailstrike': 23.68,
+                # Vertical position of critical tailstrike point [m]
+                'z_tailstrike': -0.84,
+
+                'c_tank_c_w': 0.4,  # Fraction of the wing chord occupied by the fuel tank
+                'x_tank_c_w': 0.2,  # Fraction of the wing chord where fuel tank starts
+
+                'clmax_w': 2.1,  # Maximum lift coefficient of wing airfoil
+
+                'TO_flap_def': 20*np.pi/180,  # Takeoff flap deflection [rad]
+                'LD_flap_def': 40*np.pi/180,  # Landing flap deflection [rad]
+                'flap_type': 'double slotted',  # Flap type
+                'c_flap_c_wing': 1.2,  # chord_with_deflected_flaps/chord_with_retracted_flaps
+                'b_flap_b_wing': 0.6,  # Fraction of the wing span occupied by flaps
+
+                'TO_slat_def': 0*np.pi/180,  # Takeoff slat deflection [rad]
+                'LD_slat_def': 0*np.pi/180,  # Landing slat deflection [rad]
+                'slat_type': 'slat',  # Slat type
+                'c_slat_c_wing': 1.05,  # chord_with_deflected_slats/chord_with_retracted_slats
+                'b_slat_b_wing': 0.75,  # Fraction of the wing span occupied by slats
+
+                # Distance to the ground for ground effect computation [m]
+                'h_ground': 35.0*ft2m,
+                'k_exc_drag': 0.03,  # Excrescence drag factor
+
+                # Altitude for takeoff computation [m]
+                'altitude_takeoff': 0.0,
+                'distance_takeoff': 1800.0,  # Required takeoff distance [m]
+
+                # Altitude for landing computation [m]
+                'altitude_landing': 0.0,
+                # Required landing distance [m] (The actual Fokker100 distance is 1350 m but it is very restrictive compared to the historical regression. Therefore I kept the same TO distance since the aircraft should takeoff and land at the same runway)
+                'distance_landing': 1800.0,
+                'MLW_frac': 38300/41500,  # Max Landing Weight / Max Takeoff Weight
+
+                'altitude_cruise': 35000*ft2m,  # Cruise altitude [m]
+                'Mach_cruise': 0.73,  # Cruise Mach number
+                'range_cruise': 1200*nm2m,  # Cruise range [m]
+
+                'loiter_time': 45*60,  # Loiter time [s]
+
+                'altitude_altcruise': 4572,  # Alternative cruise altitude [m]
+                'Mach_altcruise': 0.4,  # Alternative cruise Mach number
+                'range_altcruise': 200*nm2m,  # Alternative cruise range [m]
+
+                'W_payload': 107*91*gravity,  # Payload weight [N]
+                # Longitudinal position of the Payload center of gravity [m]
+                'xcg_payload': 14.4,
+
+                'W_crew': 5*91*gravity,  # Crew weight [N]
+                # Longitudinal position of the Crew center of gravity [m]
+                'xcg_crew': 2.5,
+
+                'rho_f': 804,  # Fuel density kg/m3 (This is Jet A-1)
                 }
 
     return airplane
-

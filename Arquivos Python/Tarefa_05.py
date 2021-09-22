@@ -119,14 +119,22 @@ airplane = {'AR_h': 4.64,
 'zt_h': 4.519438637980579,
 'zt_v': 4.358807176281144,
 'zt_w': 1.2281216273313065}
-
+dt.geometry(airplane)
+'''
 W0 = 428711.39823255542433
 
 Mf_cruise = 0.95569551000000
 
-dt.geometry(airplane)
+
 T0, T0vec, deltaS_wlan, CLmax_TO = dt.performance(W0, Mf_cruise, airplane)
 print(f'T0 = {T0}')
 print(f'T0vec = {T0vec}')
 print(f'S_wlan = {deltaS_wlan}')
 print(f'CLmax_TO = {CLmax_TO}')
+'''
+
+W0_guess = 467500.000
+T0_guess = 140250.000
+dt.thrust_matching(W0_guess, T0_guess, airplane)
+for key in airplane:
+    print(f'{key} = {airplane[key]}')

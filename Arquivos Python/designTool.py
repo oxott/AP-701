@@ -582,6 +582,8 @@ def empty_weight(W0_guess, T0_guess, airplane):
     W_w = 0.0051*((W0_conv*Nz)**0.557)*(S_w_conv**0.649)*(AR_w**0.55) *\
         (tcr_w**-0.4)*((1+taper_w)**0.1)*(np.cos(sweep_w)**-1)*(Sc_w**0.1)
 
+    # W_w = 0.0051*((W0_conv*Nz)**0.557)*(S_w_conv**0.649)*(AR_w**0.8) *\
+    #     (tcr_w**-0.4)*((1+taper_w)**0.1)*(np.cos(sweep_w)**-1)*(Sc_w**0.1)
     W_w = W_w*lb2N
     xcg_w = xm_w + 0.4*cm_w
 
@@ -783,121 +785,256 @@ def performance(W0, Mf_cruise, airplane):
     altitude_cruise = airplane['altitude_cruise']
     Mach_cruise = airplane['Mach_cruise']
 
-    #? Takeoff
+    # Take-off Analisys
     T, p, rho, mi = atmosphere(altitude_takeoff, 288.15)
-    sigma = rho/1.225
-    
-    CD0_TO, K_TO, CLmax_TO = aerodynamics(Mach=0.2, altitude=altitude_takeoff, n_engines_failed=0, 
-                                 flap_def=TO_flap_def, slat_def=TO_slat_def, lg_down=1, 
-                                 h_ground=h_ground, W0_guess=W0, airplane=airplane, method=2)
-    T0_W0 = 0.2387*W0/(sigma*CLmax_TO*distance_takeoff*S_w)
-    T0_TO = T0_W0*W0
-    
-    #? Landing
+    sigma_TO = rho/1.225
+
+    Mach = 0.2
+    altitude = altitude_takeoff
+    n_engines_failed = 0
+    flap_def = TO_flap_def
+    slat_def = TO_slat_def  # Changed to TO_slat_def
+    lg_down = 1
+    h_ground_takeoff = h_ground
+    Weight = W0
+
+    _, _, CLmaxTO = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                                 lg_down, h_ground_takeoff, Weight, airplane, method=2)
+
+    T0_W0 = (0.2387/(sigma_TO*CLmaxTO*distance_takeoff))*(Weight / S_w)
+    T0_TO = T0_W0*Weight
+
+    # Landing Analisys
     T, p, rho, mi = atmosphere(altitude_landing, 288.15)
-    CD0_LD, K_LD, CLmax_LD = aerodynamics(Mach=0.2, altitude=altitude_landing, n_engines_failed=0, 
-                                 flap_def=LD_flap_def, slat_def=LD_slat_def, lg_down=1, 
-                                 h_ground=h_ground, W0_guess=W0*MLW_frac, airplane=airplane, method=2)
-    sigma = rho/1.225
-    #! BFL
-    BFL = distance_landing
-    Va = 1.701*np.sqrt(BFL)
+
+    Mach = 0.2
+    altitude = altitude_landing
+    n_engines_failed = 0
+    flap_def = LD_flap_def
+    slat_def = LD_slat_def
+    lg_down = 1
+    h_ground_landing = h_ground
+    Weight = W0*MLW_frac
+
+    _, _, CLmax_Landing = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                                       lg_down, h_ground_landing, Weight, airplane, method=2)
+
+    # Aqui poderia ser Va = 1.701*np.sqrt(distance_landing/0.6)
+    Va = 1.701*np.sqrt(distance_landing)
     Vs = Va/1.3
-    S_w_lan = 2*W0*MLW_frac/(rho*Vs**2*CLmax_LD)
+
+    S_w_lan = (2*W0*MLW_frac)/(rho*(Vs**2)*CLmax_Landing)
     deltaS_wlan = S_w - S_w_lan
-    
-    #? Cruise analysis
+
+    # Cruise Analisys
     T, p, rho, mi = atmosphere(altitude_cruise, 288.15)
     a_cruise = np.sqrt(gamma_ar*R_ar*T)
     V_cruise = Mach_cruise*a_cruise
-    W_cruise = Mf_cruise*W0
-    
-    CD0_cruise, K_cruise, CLmax_cruise = aerodynamics(Mach=Mach_cruise, altitude=altitude_cruise, 
-                                n_engines_failed=0, flap_def=0.0, slat_def=0.0, lg_down=0, 
-                                h_ground=0, W0_guess=W_cruise, airplane=airplane, method=2)
-    CL_cruise = 2*W_cruise/(rho*S_w*V_cruise**2)
-    CD_cruise = CD0_cruise + K_cruise*CL_cruise**2
-    T_cruise = rho*V_cruise**2*S_w*CD_cruise/2
-    kT = (0.0013*BPR - 0.0397)*altitude_cruise/1000 - 0.0248*BPR + 0.7125 
-    T0_cruise = T_cruise/kT
+    W_cruise = W0*Mf_cruise
+    # W_cruise = Mf*W0  # De onde vem esse Mf ??
 
-    #? Climb
-    #def climb_analysis(grad, Ks, altitude, CLmax_guess, lg_down, h_ground_climb, flap_def, 
-    #                   slat_def, n_engines_failed, Mf,kT):
-    def climb_analysis(gamma_climb, ks, h_climb, CLmax_guess, lg_down, h_ground_climb, flap_def, slat_def,
-                       n_engines_failed, Mf, kT):
+    Mach = Mach_cruise
+    altitude = altitude_cruise
+    n_engines_failed = 0
+    flap_def = 0.0
+    slat_def = 0.0
+    lg_down = 0
+    h_ground_cruise = 0
+    Weight = W_cruise
+    CD0_Cruise, K_Cruise, _ = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                                           lg_down, h_ground_cruise, Weight, airplane, method=2)
+
+    CL_cruise = (2*W_cruise)/(rho*S_w*(V_cruise**2))
+    CD_cruise = CD0_Cruise + K_Cruise*(CL_cruise**2)
+
+    T_cruise = ((rho*(V_cruise**2))/2)*S_w*CD_cruise
+    Kt = (0.0013*BPR - 0.0397)*(altitude_cruise/1000) - 0.0248*BPR + 0.7125
+
+    T0_cruise = T_cruise/Kt
+
+    # CLIMB
+
+    # Define standard function for climb analysis
+
+    def climb_analysis(grad, Ks, altitude_climb, CLmax_guess,
+                       lg_down, h_ground_climb, flap_def, slat_def, n_engines_failed, Mf,
+                       kT, W0, S_w):
         '''
         We need a guess for CLmax just to get an approximate drag polar for
         speed computation. We will get the correct CLmax from the aerodynamics module
 
         kT: Thrust decay factor (e.g. use 0.94 for maximum continuous thrust)
         '''
-        T,p,rho,mi = atmosphere(h_climb, 288.15)
-        Vs = np.sqrt(2*W0*Mf/(rho*S_w*CLmax_guess))
-        V_climb = ks*Vs
+
+        T, p, rho, mi = atmosphere(altitude_climb, 288.15)
+        Vs = np.sqrt((2*W0*Mf)/(rho*S_w*CLmax_guess))
+        V_climb = Ks*Vs
         a_climb = np.sqrt(gamma_ar*R_ar*T)
-        M_climb = V_climb/a_climb
-        CD0_climb, K_climb, CLmax_climb = aerodynamics(Mach=M_climb, altitude=h_climb, 
-                                n_engines_failed=n_engines_failed, flap_def=flap_def, slat_def=slat_def,
-                                lg_down=lg_down, h_ground=h_ground_climb, W0_guess=W0*Mf, airplane=airplane, method=2)
-        CL_climb = CLmax_climb/ks**2
-        CD_climb = CD0_climb + K_climb*CL_climb**2
-        T0_W_climb = n_engines/(n_engines - n_engines_failed)*(gamma_climb + CD_climb/CL_climb)
-        T0_climb = T0_W_climb*W0*Mf/kT
+        Mach_climb = V_climb/a_climb
 
-        return T0_climb
+        Mach = Mach_climb
+        altitude = altitude_climb
+        h_ground = h_ground_climb
+        Weight = W0*Mf
+        CD0_Climb, K_Climb, CLmax_Climb = aerodynamics(Mach, altitude, n_engines_failed, flap_def, slat_def,
+                                                       lg_down, h_ground, Weight, airplane, method=2)
+        CL_climb = CLmax_Climb/(Ks**2)
+        CD_climb = CD0_Climb + K_Climb*(CL_climb**2)
+        T0_WClimb = (n_engines/(n_engines-n_engines_failed)) * \
+            (grad+(CD_climb/CL_climb))
+        T0 = T0_WClimb*((W0*Mf)/kT)
 
-    #? FAR25.111
+        return T0
+
+    # Calling the function
+
+    # 1. FAR 25.111
     if n_engines == 2:
-        gamma_climb_25111 = 0.012
-        gamma_climb_25121a = 0.000
-        gamma_climb_25121b = 0.024
-        gamma_climb_25121c = 0.012
-        gamma_climb_25121d = 0.021
+        grad = 0.012
     elif n_engines == 3:
-        gamma_climb_25111 = 0.015
-        gamma_climb_25121a = 0.003
-        gamma_climb_25121b = 0.027
-        gamma_climb_25121c = 0.015
-        gamma_climb_25121d = 0.024
+        grad = 0.015
     elif n_engines == 4:
-        gamma_climb_25111 = 0.017
-        gamma_climb_25121a = 0.005
-        gamma_climb_25121b = 0.030
-        gamma_climb_25121c = 0.017
-        gamma_climb_25121d = 0.027
-    else:
-        print('Too many or too few engines')
-    
-    T0_FAR25111 = climb_analysis(gamma_climb=gamma_climb_25111, ks=1.2, h_climb=altitude_takeoff, 
-                        CLmax_guess=CLmax_TO, lg_down=0, h_ground_climb=h_ground, flap_def=TO_flap_def, 
-                        slat_def=TO_flap_def, n_engines_failed=1, Mf=1.0, kT=1.0)
-    T0_FAR25121a = climb_analysis(gamma_climb=gamma_climb_25121a, ks=1.1, h_climb=altitude_takeoff,   
-                        CLmax_guess=CLmax_TO, lg_down=1, h_ground_climb=h_ground, flap_def=TO_flap_def, 
-                        slat_def=TO_slat_def, n_engines_failed=1, Mf=1.0, kT=1.0)
-    T0_FAR25121b = climb_analysis(gamma_climb=gamma_climb_25121b, ks=1.2, h_climb=altitude_takeoff,   
-                        CLmax_guess=CLmax_TO, lg_down=0, h_ground_climb=0, flap_def=TO_flap_def, 
-                        slat_def=TO_slat_def, n_engines_failed=1, Mf=1.0, kT=1.0)
-    T0_FAR25121c = climb_analysis(gamma_climb=gamma_climb_25121c, ks=1.25, h_climb=altitude_takeoff,   
-                        CLmax_guess=CLmax_TO, lg_down=0, h_ground_climb=0, flap_def=0.0, 
-                        slat_def=0.0, n_engines_failed=1, Mf=1.0, kT=0.94)
-    T0_FAR25119 = climb_analysis(gamma_climb=0.032, ks=1.3, h_climb=altitude_landing,   
-                        CLmax_guess=CLmax_LD, lg_down=1, h_ground_climb=0, flap_def=LD_flap_def, 
-                        slat_def=LD_slat_def, n_engines_failed=0, Mf=MLW_frac, kT=1.0)
-    T0_FAR25121d = climb_analysis(gamma_climb=gamma_climb_25121d, ks=1.4, h_climb=altitude_landing,   
-                        CLmax_guess=CLmax_LD, lg_down=1, h_ground_climb=0, flap_def=0.8*LD_flap_def, 
-                        slat_def=0.8*LD_slat_def, n_engines_failed=0, Mf=MLW_frac, kT=1.0)
-    
-    T0vec = [T0_TO, T0_cruise, T0_FAR25111, T0_FAR25121a, T0_FAR25121b, T0_FAR25121c, T0_FAR25119, T0_FAR25121d]
-    T0 = 1.05*max(T0vec)
-    return T0, T0vec, deltaS_wlan, CLmax_TO
+        grad = 0.017
+
+    Ks = 1.2
+    altitude_climb = altitude_takeoff
+    CLmax_guess = CLmaxTO
+    lg_down = 0
+    h_ground_climb = h_ground
+    flap_def = TO_flap_def
+    slat_def = TO_slat_def
+    n_engines_failed = 1
+    Mf = 1
+    kT = 1
+    T0_FAR_25_111 = climb_analysis(grad, Ks, altitude_climb, CLmax_guess,
+                                   lg_down, h_ground_climb, flap_def, slat_def, n_engines_failed, Mf,
+                                   kT, W0, S_w)
+
+    # 2. FAR 25.111a
+    if n_engines == 2:
+        grad = 0.000
+    elif n_engines == 3:
+        grad = 0.003
+    elif n_engines == 4:
+        grad = 0.005
+
+    Ks = 1.1
+    altitude_climb = altitude_takeoff
+    CLmax_guess = CLmaxTO
+    lg_down = 1
+    h_ground_climb = h_ground
+    flap_def = TO_flap_def
+    slat_def = TO_slat_def
+    n_engines_failed = 1
+    Mf = 1
+    kT = 1
+    T0_FAR_25_121a = climb_analysis(grad, Ks, altitude_climb, CLmax_guess,
+                                    lg_down, h_ground_climb, flap_def, slat_def, n_engines_failed, Mf,
+                                    kT, W0, S_w)
+
+    # 3. FAR 25.121b
+    if n_engines == 2:
+        grad = 0.024
+    elif n_engines == 3:
+        grad = 0.027
+    elif n_engines == 4:
+        grad = 0.030
+
+    Ks = 1.2
+    altitude_climb = altitude_takeoff
+    CLmax_guess = CLmaxTO
+    lg_down = 0
+    h_ground_climb = 0
+    flap_def = TO_flap_def
+    slat_def = TO_slat_def
+    n_engines_failed = 1
+    Mf = 1
+    kT = 1
+    T0_FAR_25_121b = climb_analysis(grad, Ks, altitude_climb, CLmax_guess,
+                                    lg_down, h_ground_climb, flap_def, slat_def, n_engines_failed, Mf,
+                                    kT, W0, S_w)
+
+    # 4. FAR 25.111c
+    if n_engines == 2:
+        grad = 0.012
+    elif n_engines == 3:
+        grad = 0.015
+    elif n_engines == 4:
+        grad = 0.017
+
+    Ks = 1.25
+    altitude_climb = altitude_takeoff
+    CLmax_guess = CLmaxTO
+    lg_down = 0
+    h_ground_climb = 0
+    flap_def = 0
+    slat_def = 0
+    n_engines_failed = 1
+    Mf = 1
+    kT = 0.94
+    T0_FAR_25_121c = climb_analysis(grad, Ks, altitude_climb, CLmax_guess,
+                                    lg_down, h_ground_climb, flap_def, slat_def, n_engines_failed, Mf,
+                                    kT, W0, S_w)
+
+    # 5. FAR 25.119
+    grad = 0.032
+    Ks = 1.30
+    altitude_climb = altitude_landing
+    CLmax_guess = CLmax_Landing
+    lg_down = 1
+    h_ground_climb = 0
+    flap_def = LD_flap_def
+    slat_def = LD_slat_def
+    n_engines_failed = 0
+    Mf = MLW_frac
+    kT = 1
+    T0_FAR_25_119 = climb_analysis(grad, Ks, altitude_climb, CLmax_guess,
+                                   lg_down, h_ground_climb, flap_def, slat_def, n_engines_failed, Mf,
+                                   kT, W0, S_w)
+
+    # 6. FAR 25.121d
+    if n_engines == 2:
+        grad = 0.021
+    elif n_engines == 3:
+        grad = 0.024
+    elif n_engines == 4:
+        grad = 0.027
+
+    Ks = 1.40
+    altitude_climb = altitude_landing
+    CLmax_guess = CLmax_Landing
+    lg_down = 1
+    h_ground_climb = 0
+    flap_def = 0.8*LD_flap_def
+    slat_def = 0.8*LD_slat_def
+    n_engines_failed = 1
+    Mf = MLW_frac
+    kT = 1
+    T0_FAR_25_121d = climb_analysis(grad, Ks, altitude_climb, CLmax_guess,
+                                    lg_down, h_ground_climb, flap_def, slat_def, n_engines_failed, Mf,
+                                    kT, W0, S_w)
+
+    T0vec = [T0_TO, T0_cruise, T0_FAR_25_111, T0_FAR_25_121a,
+             T0_FAR_25_121b, T0_FAR_25_121c,  T0_FAR_25_119, T0_FAR_25_121d]
+    T0 = 1.05*np.max(T0vec)
+
+    return T0, T0vec, deltaS_wlan, CLmaxTO
 
 # ----------------------------------------
 
 
 def thrust_matching(W0_guess, T0_guess, airplane):
 
-    # ADD CODE FROM SECTION 3.8 HERE ###
+    delta = 1000
+
+    while np.abs(delta) > 10:
+        W0, We, Wf, Mf_cruise, xcg_e = weight(W0_guess, T0_guess, airplane)
+        T0, T0vec, deltaS_wlan, CLmaxTO = performance(W0, Mf_cruise, airplane)
+        if deltaS_wlan == 0:
+            print(airplane['S_w'])
+        delta = T0 - T0_guess
+        T0_guess = T0
+        W0_guess = W0
 
     # Update dictionary
     airplane['W0'] = W0
@@ -958,8 +1095,50 @@ def balance(airplane):
     CLmaxTO = airplane['CLmaxTO']
     rho_f = airplane['rho_f']
 
-    # ADD CODE FROM SECTION 3.9 HERE ###
+    #? Fuel tank center of gravity
+    Vf = Wf/(rho_f*gravity)
+    tc_w = (tcr_w + tct_w)/2
+    b_tank_b_w = 3*Vf/(c_tank_c_w*tc_w*(cr_w**2 + ct_w**2 + cr_w*ct_w)*b_w)
+    if b_tank_b_w < 1.0:
+        print('Volume de combustível insuficiente na asa!')
+ 
+ 
+ 
+    ycg_f = b_tank_b_w*(b_w/8)*(cr_w**2 + 2*cr_w*ct_w + 3*ct_w**2)/(cr_w**2 + cr_w*ct_w + ct_w**2)
+    sweep_tank = geo_change_sweep(0.25, x_tank_c_w + c_tank_c_w/2, sweep_w, b_w/2, cr_w, ct_w)
+    xcg_f = xr_w + cr_w*(x_tank_c_w + c_tank_c_w/2)+ycg_f*np.tan(sweep_tank)
 
+    #? Center of gravity variation
+    xcg_1 = xcg_e
+    xcg_2 = (We*xcg_e + W_crew*xcg_crew)/(We + W_crew)
+    xcg_3 = (We*xcg_e*W_payload*xcg_payload+W_crew*xcg_crew)/(We + W_payload + W_crew)
+    xcg_4 = (We*xcg_e*Wf*xcg_f+W_crew*xcg_crew)/(We + Wf + W_crew)
+    xcg_5 = (We*xcg_e + Wf*xcg_f + W_payload*xcg_payload + W_crew*xcg_crew)/(W0)
+    xcg_fwd = min(xcg_1, xcg_2, xcg_3, xcg_4, xcg_5)
+    xcg_aft = max(xcg_1, xcg_2, xcg_3, xcg_4, xcg_5)
+    xcg_fwd_flight = min(xcg_2, xcg_3, xcg_4, xcg_5)
+    xcg_aft_flight = max(xcg_2, xcg_3, xcg_4, xcg_5)
+    
+    #? Neutral Point
+    sweep_maxt_w = geo_change_sweep(0.25, 0.40, sweep_w, b_w/2, cr_w, ct_w)
+    beta_2 = 1-Mach_cruise**2
+    CLalpha_w = 2*np.pi*AR_w/(2 + np.sqrt(4 + (AR_w**2)*beta_2/(0.95**2)*(1 + np.tan(sweep_maxt_w)**2/beta_2)))
+    xAC_w = xm_w + cm_w/4
+    sweep_maxt_h = geo_change_sweep(0.25, 0.40, sweep_h, b_h/2, cr_h, ct_h)
+    CLalpha_h = 2*np.pi*AR_h/(2 + np.sqrt(4 + (AR_h**2)*beta_2/(0.95**2)*(1 + np.tan(sweep_maxt_h)**2/beta_2)))
+    xAC_h = xm_h + cm_h/4
+    downwash = 2*CLalpha_w/(np.pi*AR_w)
+    CMalpha_f = 0.03*180/np.pi *D_f**2*L_f/(cm_w*S_w)
+    xnp = (CLalpha_w*xAC_w - CMalpha_f*cm_w + eta_h*S_h/S_w * CLalpha_h*(1 - downwash)*xAC_h)/(CLalpha_w + eta_h*S_h/S_w * CLalpha_h*(1 - downwash))
+    
+    #? Static Margin
+    SM_fwd = (xnp - xcg_fwd_flight)/(cm_w)
+    SM_aft = (xnp - xcg_aft_flight)/(cm_w)
+    
+    #? Vertical Tail lift for OEI takeoff condition
+    Ks = 12/1.1
+    CLv = (y_n/b_w) * CLmaxTO/(Ks**2) * T0/(W0 * n_engines * Cvt)
+    
     # Update dictionary
     airplane['xcg_fwd'] = xcg_fwd
     airplane['xcg_aft'] = xcg_aft
@@ -1243,7 +1422,7 @@ def Cf_calc(Mach, altitude, length, rugosity, k_lam, Tba=288.15):
     T, p, rho, mi = atmosphere(altitude, Tba)
 
     # Velocidade
-    v = np.sqrt(1.4*R_ar*T)*Mach
+    v = np.sqrt(1.4*287*T)*Mach
 
     # Reynolds na transição
     Re_conv = rho*v*k_lam*length/mi

@@ -1,3 +1,6 @@
+import numpy as np
+import designTool as dt
+
 skysonic = {'AR_h': 4.19,
             'AR_v': 1.22,
             'AR_w': 6.92,
